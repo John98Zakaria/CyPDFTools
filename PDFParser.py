@@ -1,39 +1,38 @@
 import io
 from collections import namedtuple
+from XRefTable import *
+import zlib
+import re
 
-
-class PDFFile:
+class PDFParser:
     def __init__(self, filePath):
         self.file = open(filePath, "rb+")
         self.filePath = filePath
-        self.xrefTableAddress = None
-        self._xRefLength = 0
-        self._xRefTable = []
-        self._initXrefTable()
+        self.xRef:XRefTable = XRefTable
+        # self.xRefParser()
 
-    def _initXrefTable(self):
+
+    def xRefParser(self):
         self.file.seek(-5, io.SEEK_END)
         count = 0;
         while count != 2:
             self.file.seek(-2, io.SEEK_CUR)
             char = self.file.read(1).decode("utf-8")
             count += char == "\n"
-        self.xrefTableAddress = int(self.file.readline()[:-1])
-        self.file.seek(self.xrefTableAddress, io.SEEK_SET)  # Seek to xRefTable
+        xrefAddress = int(self.file.readline()[:-1])
+        self.file.seek(xrefAddress, io.SEEK_SET)  # Seek to xRefTable
         self.file.readline()
         entries = self.file.readline().decode("UTF-8").split(" ")[1]  # get number of xrefItems
         print(entries)  # get number of xrefItems
-        self._xRefLength = int(entries)
-        self._readXrefTable()
+        xrefLength = int(entries)
+        xRefTable = self.file.readlines(xrefLength*20 - 1)
+        self.xRef = XRefTable(xrefAddress, xRefTable)
 
     def seek_object(self, number: int) -> None:
-        address = self._xRefTable[number].address
+        address = self.xRef.table[number].address
         self.file.seek(address, io.SEEK_SET)
 
-    def _readXrefTable(self):
-        table_entries = self.file.readlines(self._xRefLength * 20 - 1)
 
-        self._xRefTable = list(map(self.parse_entry, table_entries))
 
     @classmethod
     def parse_entry(cls, entry: bytes) -> tuple:
@@ -50,18 +49,35 @@ class PDFFile:
 
     def __str__(self):
         return f"FilePath : {self.filePath}\n" \
-               f"xRefAddress : {self.xrefTableAddress} \n" \
-               f"xRefLength  : {self._xRefLength}"
+               f"{self.xRef}"
 
     def __repr__(self):
         return self.__str__()
 
 
 if __name__ == '__main__':
-    pdf = PDFFile("Blatt03.pdf")
+    pdf = PDFParser("test_pdfs/ex01.pdf")
     print(pdf)
-    table = pdf._xRefTable
+    # pdf.seek_object(53)
+    pdf.file.seek(139448)
+    print(pdf.file.readline())
+    print(pdf.file.readline())
+    print(pdf.file.readline())
+    print(pdf.file.readline())
+    print(pdf.file.readline())
+    print(pdf.file.readline())
+    print(pdf.file.readline())
+    print(pdf.file.readline())
+    print(pdf.file.readline())
 
-    pdf.seek_object(3)
-    print(pdf.file.readlines(50))
+
+
+    # stream = re.compile(b'stream(.*?)endstream', re.S)
+    st = pdf.file.read(2786)
+    s = st.strip(b'\r\n')
+    try:
+        print(zlib.decompress(s).decode('UTF-8'))
+        print("")
+    except:
+        pass
     pdf.close()
