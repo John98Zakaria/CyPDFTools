@@ -1,5 +1,5 @@
 import pytest
-from dictionary_parser import *
+from objectsParser import *
 
 
 def test_OnSameLine():
@@ -11,6 +11,41 @@ def test_OnSameLine():
                                                                                'Rotate': "0",
                                                                                'Trans': {}}})
 
+
+def test_ListParsing():
+    l1 = """/Type /Pages /Kids [
+4 0 R
+26 0 R
+40 0 R
+46 0 R
+52 0 R
+58 0 R
+64 0 R
+70 0 R
+76 0 R
+82 0 R
+88 0 R
+94 0 R
+100 0 R
+110 0 R
+117 0 R
+125 0 R
+132 0 R
+138 0 R
+144 0 R
+150 0 R
+156 0 R
+164 0 R
+170 0 R
+176 0 R
+182 0 R
+189 0 R
+195 0 R
+201 0 R
+211 0 R
+224 0 R
+] /Count 30
+>>"""
 
 def test_MixLine():
     t1 = """<</Subtype/Image

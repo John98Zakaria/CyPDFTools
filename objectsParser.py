@@ -1,9 +1,12 @@
-from utills import BidirectionalIterator
+from utills import ObjectIter
 from pdfobjects import *
 from typing import Iterable
 import re
 
-def extractNextName(stream: BidirectionalIterator) -> str:
+SEPERATORS = "\\/[]<>() \t\n"
+
+
+def extractNextName(stream: ObjectIter) -> str:
     """
     Extracts the next name from the iterator (7.3.5 PDF 32000-1:2008)
     :param stream:A stream whose forward slash / was just consumed
@@ -11,7 +14,7 @@ def extractNextName(stream: BidirectionalIterator) -> str:
     """
     out_string = ""
     for letter in stream:
-        if (not letter.isalnum() and not letter == "."):
+        if (letter in SEPERATORS):
             stream.prev()  # Reverts a step back to where
             # the name ended in order for the typechecker to deduce the type
             break
@@ -31,7 +34,7 @@ def skipSpace(stream: Iterable) -> str:
 
 
 def parseList(stream: Iterable) -> str:
-    #TODO Parse the entries
+    # TODO Parse the entries
     out_string = ""
     for letter in stream:
         if letter == "]":
@@ -40,7 +43,7 @@ def parseList(stream: Iterable) -> str:
     return out_string.strip().split(" ")
 
 
-def parseStringLiteral(stream: BidirectionalIterator) -> str:
+def parseStringLiteral(stream: ObjectIter) -> str:
     """
     Parses string literals (7.3.4.2) PDF 32000-1:2008
     :param stream: A stream whose opening round bracket ( was just consumed
@@ -61,23 +64,53 @@ def parseStringLiteral(stream: BidirectionalIterator) -> str:
     return out_string
 
 
-def parseNumeric(init, stream: BidirectionalIterator):
+def parseNumeric(init, stream: ObjectIter):
+    #TODO Test negative number
     number: str = init
     for char in stream:
         number += char
         if (not number.isnumeric()):
-            number+=stream.moveto("/")
+            number += stream.moveto("/")
             break
 
-    number = re.match(r"(\d+) *(0 R){0,1}",number)
-    return number.group(1) if number.lastindex<2 else IndirectObjectRef(number.group(1))
+    number = re.match(r"(\d+) *(0 R){0,1}", number)
+    return number.group(1) if number.lastindex < 2 else IndirectObjectRef(number.group(1))
+
+
+def objectIdentifier(streamIter: Iterable, letter=None):
+    if(letter is None):
+        letter = next(streamIter)
+    if (letter == "/"):
+        value = extractNextName(streamIter)
+
+    elif (letter == "["):
+        value = parseList(streamIter)
+
+    elif (letter.isnumeric()):
+        value = parseNumeric(letter, streamIter)
+
+    elif (letter == "<"):
+        letter = next(streamIter)
+        if (letter == "<"):
+            value = parseDict(streamIter)
+        else:
+            value = letter + streamIter.moveto(">")
+    elif (letter == "("):
+        value = parseStringLiteral(streamIter)
+
+    skipSpace(streamIter)
+
+    return value
 
 
 def parseDict(pdf_stream):
     object_dict = dict()
-    streamIter = BidirectionalIterator(pdf_stream) if type(pdf_stream) != BidirectionalIterator else pdf_stream
+    streamIter = ObjectIter(pdf_stream) if type(pdf_stream) != ObjectIter else pdf_stream
+    streamIter.prepareDictParse()
     for letter in streamIter:
         # Parse Key
+
+
         if (letter == ">"):
             letter = next(streamIter)
             if (letter == ">"):
@@ -89,27 +122,8 @@ def parseDict(pdf_stream):
         letter = skipSpace(streamIter)
 
         # parse value
+        value = objectIdentifier(streamIter, letter)
 
-        if (letter == "/"):
-            value = extractNextName(streamIter)
-
-        elif (letter == "["):
-            value = parseList(streamIter)
-
-        elif (letter.isnumeric()):
-            value = parseNumeric(letter, streamIter)
-
-        elif (letter == "<"):
-            letter = next(streamIter)
-            if (letter == "<"):
-                value = parseDict(streamIter)
-            else:
-                value = letter + streamIter.moveto(">")
-        elif (letter == "("):
-            value = parseStringLiteral(streamIter)
-
-
-        skipSpace(streamIter)
         try:
             streamIter.prev()
         except IndexError:
@@ -133,7 +147,6 @@ if __name__ == '__main__':
     #
     # print(parseDict(t2))
 
-
     t3 = """/BaseFont/FWRCSR+CMMIB10/FontDescriptor 34 0 R/Type/Font
 /FirstChar 78/LastChar 121/Widths[ 950 0
 0 0 0 0 0 0 0 0 947 674 0 0 0 0 0 0
@@ -141,4 +154,26 @@ if __name__ == '__main__':
 0 0 0 0 415 0 0 0 0 590]
 /Encoding/WinAnsiEncoding/Subtype/Type1>>"""
 
-    print(parseDict(t3))
+    t4 = """/Type/Encoding/BaseEncoding/WinAnsiEncoding/Differences[
+0/parenleftbig/parenrightbig
+16/parenleftBig/parenrightBig/parenleftbigg/parenrightbigg
+26/braceleftbigg
+34/bracketleftBigg/bracketrightBigg
+40/braceleftBigg/bracerightBigg
+56/bracelefttp/bracerighttp/braceleftbt/bracerightbt/braceleftmid/bracerightmid/braceex
+80/summationtext
+88/summationdisplay
+90/integraldisplay
+104/bracketleftBig/bracketrightBig
+110/braceleftBig/bracerightBig/radicalbig
+122/bracehtipdownleft/bracehtipdownright/bracehtipupleft/bracehtipupright]>>"""
+
+    # print(parseDict(t4))
+
+    r3 ="""<<
+/Font << /F32 4 0 R /F31 5 0 R /F50 6 0 R /F51 7 0 R /F35 8 0 R /F38 9 0 R /F33 10 0 R /F34 11 0 R >>
+/ProcSet [ /PDF /Text ]
+>>
+endobj"""
+
+    print(objectIdentifier(ObjectIter(r3)))

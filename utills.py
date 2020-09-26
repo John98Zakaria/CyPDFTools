@@ -1,4 +1,6 @@
-class BidirectionalIterator:
+SEPERATORS = "\\/[]<>() \t\n"
+
+class ObjectIter:
 
     def __init__(self, iterable, pointer=-1):
         """
@@ -8,6 +10,37 @@ class BidirectionalIterator:
         self.iterable = iterable
         self.pointer = pointer
         self.length = len(iterable)
+        self._clean()
+
+    def _clean(self):
+        """
+        Removes endobj/stream from iterator
+        :return:
+        """
+        trailler = self.iterable[-6:]
+        if(trailler in ["endobj","stream"]):
+            self.length-=6
+
+
+    def moveToNextObject(self)->None:
+        """
+        Moves pointer to next object in stream
+        :return:
+        """
+        currentChar = self.iterable[self.pointer]
+        while(currentChar not in SEPERATORS):
+            self.pointer +=1
+            currentChar = self.iterable[self.pointer]
+        self.pointer-=1
+
+
+
+
+    def prepareDictParse(self)->None:
+        """
+        Moves the Pointer to the item preceding a forward slash /
+        """
+        self.moveto("/")
 
     def __len__(self):
         return self.length
@@ -27,7 +60,7 @@ class BidirectionalIterator:
         :return: Previous element
         """
         self.pointer -= 1
-        if (self.pointer < 0):
+        if (self.pointer < -1):
             raise StopIteration
         return self.iterable[self.pointer]
 

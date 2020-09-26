@@ -17,6 +17,8 @@ class XRefTable:
             tup = namedtuple("XrefEntry", ["address", "revision", "in_use_entry"])
             return tup(*entry)
         return list(map(parse_entry,table))
+
+
     def __len__(self):
         return len(self.table)
 
