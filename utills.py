@@ -41,7 +41,10 @@ class BidirectionalIterator:
         while (self.iterable[self.pointer] != item):
             self.pointer += 1
             if (self.pointer == self.length):
-                raise IndexError(f"{item} not found")
+                if(self.iterable[self.pointer-1]==">"): #Reached end of dict
+                    return self.iterable[pointerStart:self.pointer ]
+                else:
+                    raise IndexError(f"{item} not found")
         self.pointer -= 1
         return self.iterable[pointerStart:self.pointer + 1]
 

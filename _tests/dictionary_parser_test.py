@@ -8,9 +8,17 @@ def test_OnSameLine():
                               'CropBox': ['0', '0', '504', '661.5'], 'MediaBox': ['0', '0', '504', '661.5'],
                               'Parent': IndirectObjectRef(3493), 'Resources': {'Font': {'F3': IndirectObjectRef(2186),
                                                                                         'ProcSet': ['/Text/ImageC']},
-                                                                               'Rotate': IndirectObjectRef(0),
+                                                                               'Rotate': "0",
                                                                                'Trans': {}}})
 
+
+def test_MixLine():
+    t1 = """<</Subtype/Image
+/ColorSpace/DeviceGray
+/Width 360
+/Height 135
+/BitsPerComponent 8
+/Filter/DCTDecode/Length 6899>>"""
 
 def test_StringLiterals():
     l1 = """/Producer (MiKTeX pdfTeX-1.40.21)
@@ -51,3 +59,19 @@ def test_multiline():
                              'Length': "2786", 'Filter': 'FlateDecode'}
 
 
+    t2 = """/R19
+    19 0 R/R11
+    11 0 R/R9
+    9 0 R/R33
+    33 0 R/R35
+    35 0 R/R31
+    31 0 R/R29
+    29 0 R/R13
+    13 0 R/R15
+    15 0 R/R21
+    21 0 R/R17
+    17 0 R>>"""
+
+    assert (parseDict(t2)==
+    {'R19': IndirectObjectRef(19), 'R11': IndirectObjectRef(11), 'R9': IndirectObjectRef(9 ) ,'R33': IndirectObjectRef(33), 'R35': IndirectObjectRef(35), 'R31': IndirectObjectRef(31), 'R29': IndirectObjectRef(29), 'R13': IndirectObjectRef(13),
+     'R15': IndirectObjectRef(15), 'R21': IndirectObjectRef(21), 'R17': IndirectObjectRef(17)})

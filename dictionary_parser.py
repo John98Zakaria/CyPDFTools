@@ -31,6 +31,7 @@ def skipSpace(stream: Iterable) -> str:
 
 
 def parseList(stream: Iterable) -> str:
+    #TODO Parse the entries
     out_string = ""
     for letter in stream:
         if letter == "]":
@@ -64,10 +65,12 @@ def parseNumeric(init, stream: BidirectionalIterator):
     number: str = init
     for char in stream:
         number += char
-        if (not number.isnumeric() or char == "/"):
-            stream.moveto("/")
-            return IndirectObjectRef(number[:-1])
-    return number
+        if (not number.isnumeric()):
+            number+=stream.moveto("/")
+            break
+
+    number = re.match(r"(\d+) *(0 R){0,1}",number)
+    return number.group(1) if number.lastindex<2 else IndirectObjectRef(number.group(1))
 
 
 def parseDict(pdf_stream):
@@ -117,10 +120,25 @@ def parseDict(pdf_stream):
 
 
 if __name__ == '__main__':
-    t1 = """/Type /ObjStm
-    /N 68
-    /First 522
-    /Length 2786      
-    /Filter /FlateDecode"""
-    print(parseDict(t1))
+    ##Bad table
+    t1 = """/Type/Annot/Border[ 0 0 0]/Dest[ 4863 0 R/XYZ 76.450073 383.27719 0]/F 4/Rect[ 167.25 565.5 447.75 582]/Subtype/Link>>"""
+    # print(parseDict(t1))
+    #
+    # t2 = """/Subtype/Image
+    # /ColorSpace/DeviceGray
+    # /Width 360
+    # /Height 135
+    # /BitsPerComponent 8
+    # /Filter/DCTDecode/Length 6899>>"""
+    #
+    # print(parseDict(t2))
 
+
+    t3 = """/BaseFont/FWRCSR+CMMIB10/FontDescriptor 34 0 R/Type/Font
+/FirstChar 78/LastChar 121/Widths[ 950 0
+0 0 0 0 0 0 0 0 947 674 0 0 0 0 0 0
+0 0 0 0 0 0 0 544 0 0 0 0 0 0 0 0
+0 0 0 0 415 0 0 0 0 590]
+/Encoding/WinAnsiEncoding/Subtype/Type1>>"""
+
+    print(parseDict(t3))
