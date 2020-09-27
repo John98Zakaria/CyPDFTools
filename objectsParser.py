@@ -65,13 +65,18 @@ def parseStringLiteral(stream: ObjectIter) -> str:
 
 
 def parseNumeric(init, stream: ObjectIter):
-    #TODO Test negative number
     number: str = init
     for char in stream:
-        number += char
-        if (not number.lstrip("-").isnumeric() ):
-            number += stream.moveto("/")
+        if(char in "\\/[]<>()\t\n"):
+            stream.prev()
             break
+        elif (char in " R"):
+            pass
+        elif (not char.isnumeric() ):
+            number += stream.finishNumber()
+            break
+        number += char
+
 
     number = re.match(r"-?(\d+) *(0 R){0,1}", number)
     return number.group(1) if number.lastindex < 2 else IndirectObjectRef(number.group(1))
@@ -149,6 +154,14 @@ if __name__ == '__main__':
     # /Filter/DCTDecode/Length 6899>>"""
     #
     # print(parseDict(t2))
+    t1 = (rf"""/Type/Page/BleedBox[ 0 0 504 661.5]/Contents 5 0 R/CropBox[ 0 0 504 661.5]/MediaBox[ 0 0 504 661.5]/Parent 3493 0 R/Resources<</Font<</F3 2186 0 R>>/ProcSet[/Text/ImageC]>>/Rotate 0/Trans<<>>>>""")
+
+    # print(parseDict(t1))
+
+    t2 = """/R17
+       17 0 R>>"""
+
+    print(parseDict(t2))
 
     t3 = """/BaseFont/FWRCSR+CMMIB10/FontDescriptor 34 0 R/Type/Font
 /FirstChar 78/LastChar 121/Widths[ 950 0
@@ -191,7 +204,7 @@ endobj"""
 >>
 endobj"""
     o = ObjectIter(r5)
-    print(objectIdentifier(o))
+    # print(objectIdentifier(o))
 
     t6 = """<<
 /Type /FontDescriptor
@@ -213,4 +226,4 @@ endobj"""
 
     o = ObjectIter(t6)
 
-    print(objectIdentifier(o))
+    # print(objectIdentifier(o))

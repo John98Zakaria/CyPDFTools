@@ -6,10 +6,10 @@ def test_OnSameLine():
     t1 = (rf"""/Type/Page/BleedBox[ 0 0 504 661.5]/Contents 5 0 R/CropBox[ 0 0 504 661.5]/MediaBox[ 0 0 504 661.5]/Parent 3493 0 R/Resources<</Font<</F3 2186 0 R>>/ProcSet[/Text/ImageC]>>/Rotate 0/Trans<<>>>>""")
     assert (parseDict(t1) == {'Type': 'Page', 'BleedBox': ['0', '0', '504', '661.5'], 'Contents': IndirectObjectRef(5),
                               'CropBox': ['0', '0', '504', '661.5'], 'MediaBox': ['0', '0', '504', '661.5'],
-                              'Parent': IndirectObjectRef(3493), 'Resources': {'Font': {'F3': IndirectObjectRef(2186),
+                              'Parent': IndirectObjectRef(3493), 'Resources': {'Font': {'F3': IndirectObjectRef(2186)},
                                                                                         'ProcSet': ['/Text/ImageC']},
                                                                                'Rotate': "0",
-                                                                               'Trans': {}}})
+                                                                               'Trans': {}})
 
 
 def test_ListParsing():

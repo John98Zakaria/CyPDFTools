@@ -1,5 +1,6 @@
 SEPERATORS = "\\/[]<> ()\t\n"
 
+
 class ObjectIter:
 
     def __init__(self, iterable, pointer=-1):
@@ -18,14 +19,10 @@ class ObjectIter:
         :return:
         """
         trailler = self.iterable[-6:]
-        if(trailler in ["endobj","stream"]):
-            self.length-=6
+        if (trailler in ["endobj", "stream"]):
+            self.length -= 6
 
-
-
-
-
-    def prepareDictParse(self)->None:
+    def prepareDictParse(self) -> None:
         """
         Moves the Pointer to the item preceding a forward slash /
         """
@@ -43,7 +40,7 @@ class ObjectIter:
             raise StopIteration
         return self.iterable[self.pointer]
 
-    def prev(self)->any:
+    def prev(self) -> any:
         """
         Decrements the counter
         :return: Previous element
@@ -65,11 +62,11 @@ class ObjectIter:
             if (self.pointer == self.length):
                 countClosingBraces = 0
                 self.pointer -= 1
-                while(countClosingBraces!=2):
-                    countClosingBraces +=self.iterable[self.pointer]==">"
-                    self.pointer-=1
+                while (countClosingBraces != 2):
+                    countClosingBraces += self.iterable[self.pointer] == ">"
+                    self.pointer -= 1
                 return self.iterable[pointerStart:self.pointer + 1]
-            elif(self.pointer<=self.length):
+            elif (self.pointer <= self.length):
                 continue
             else:
                 raise IndexError(f"{item} not found")
@@ -77,9 +74,19 @@ class ObjectIter:
 
         return self.iterable[pointerStart:self.pointer + 1]
 
+
+    def finishNumber(self):
+        rest = ""
+        for char in iter(self):
+            if char in "<>\\/\n\t":
+                break
+            rest+=char
+        self.prev()
+        return rest
+
+
     def peek(self):
         """
         :return: Current item without incrementing the pointer
         """
         return self.iterable[self.pointer]
-

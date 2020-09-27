@@ -68,7 +68,7 @@ class PDFParser:
 
     def extractObjets(self):
         objects = []
-        for objectIndex in range(5,self.xRef.__len__()):
+        for objectIndex in range(1,self.xRef.__len__()):
             objects.append(self.extractobject(objectIndex))
 
         return objects
@@ -95,11 +95,14 @@ class PDFParser:
 
 
 if __name__ == '__main__':
-    pdf = PDFParser("test_pdfs/04DemoPrim.pdf")
+    pdf = PDFParser("test_pdfs/Tagneed.pdf")
     print(pdf)
 
     print(pdf.extractobject(5))
-    # print(pdf.extractObjets())
+    obs = pdf.extractObjets()
+
+    for o in obs:
+        print(o)
 
     # # stream = re.compile(b'stream(.*?)endstream', re.S)
     # st = pdf.file.read(2786)
