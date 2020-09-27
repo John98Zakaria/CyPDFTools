@@ -11,7 +11,7 @@ class XRefTable:
         def parse_entry(entry: bytes) -> tuple:
             if (type(entry) == bytes):
                 entry = entry.decode("utf-8")
-            entry = entry.split(" ")[:-1]
+            entry = entry.split(" ")[:3]
             entry[0] = int(entry[0])
             entry[1] = int(entry[1])
             tup = namedtuple("XrefEntry", ["address", "revision", "in_use_entry"])

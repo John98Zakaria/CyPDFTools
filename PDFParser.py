@@ -47,13 +47,14 @@ class PDFParser:
             currentChar = self.file.read(1)
         self.file.seek(-1,io.SEEK_CUR)
         currentLine = self.file.readline()
-        objectstream= currentLine
+        objectstream= b""
         while True:
             try:
-                currentLine = self.file.readline()
                 if( (bytes("endobj","utf-8") in currentLine or bytes("stream","utf-8") in currentLine)):
                     break
                 objectstream+=currentLine
+                currentLine = self.file.readline()
+
             except UnicodeDecodeError:
                 break
 
@@ -67,7 +68,7 @@ class PDFParser:
 
     def extractObjets(self):
         objects = []
-        for objectIndex in range(2,self.xRef.__len__()):
+        for objectIndex in range(5,self.xRef.__len__()):
             objects.append(self.extractobject(objectIndex))
 
         return objects
@@ -94,12 +95,11 @@ class PDFParser:
 
 
 if __name__ == '__main__':
-    pdf = PDFParser("test_pdfs/PDF-Specifications.pdf")
+    pdf = PDFParser("test_pdfs/04DemoPrim.pdf")
     print(pdf)
 
-
-
-    print(pdf.extractObjets())
+    print(pdf.extractobject(5))
+    # print(pdf.extractObjets())
 
     # # stream = re.compile(b'stream(.*?)endstream', re.S)
     # st = pdf.file.read(2786)

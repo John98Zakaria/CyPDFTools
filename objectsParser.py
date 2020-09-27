@@ -77,7 +77,7 @@ def parseNumeric(init, stream: ObjectIter):
     return number.group(1) if number.lastindex < 2 else IndirectObjectRef(number.group(1))
 
 
-def objectIdentifier(streamIter: Iterable, letter=None):
+def objectIdentifier(streamIter: ObjectIter, letter=None):
     if(letter is None):
         letter = next(streamIter)
     if (letter == "/"):
@@ -98,6 +98,8 @@ def objectIdentifier(streamIter: Iterable, letter=None):
             next(streamIter)
     elif (letter == "("):
         value = parseStringLiteral(streamIter)
+    elif (letter == "t" or "f"):
+        value = streamIter.moveto("e") + next(streamIter)
 
     skipSpace(streamIter)
 
