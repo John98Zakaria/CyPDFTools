@@ -69,11 +69,11 @@ def parseNumeric(init, stream: ObjectIter):
     number: str = init
     for char in stream:
         number += char
-        if (not number.isnumeric()):
+        if (not number.lstrip("-").isnumeric() ):
             number += stream.moveto("/")
             break
 
-    number = re.match(r"(\d+) *(0 R){0,1}", number)
+    number = re.match(r"-?(\d+) *(0 R){0,1}", number)
     return number.group(1) if number.lastindex < 2 else IndirectObjectRef(number.group(1))
 
 
@@ -86,7 +86,7 @@ def objectIdentifier(streamIter: Iterable, letter=None):
     elif (letter == "["):
         value = parseList(streamIter)
 
-    elif (letter.isnumeric()):
+    elif (letter.isnumeric() or letter=="-"):
         value = parseNumeric(letter, streamIter)
 
     elif (letter == "<"):
@@ -94,7 +94,8 @@ def objectIdentifier(streamIter: Iterable, letter=None):
         if (letter == "<"):
             value = parseDict(streamIter)
         else:
-            value = letter + streamIter.moveto(">")
+            value = "<" + streamIter.moveto(">")+">"
+            next(streamIter)
     elif (letter == "("):
         value = parseStringLiteral(streamIter)
 
@@ -176,4 +177,38 @@ if __name__ == '__main__':
 >>
 endobj"""
 
-    print(objectIdentifier(ObjectIter(r3)))
+    # print(objectIdentifier(ObjectIter(r3)))
+
+    r5 = """<<
+/Title <feff0050006f0077006500720050006f0069006e0074002d0050007200e400730065006e0074006100740069006f006e>
+/Author (Schumacher, Hendrik-Lukas)
+/CreationDate (D:20200430160325+02'00')
+/ModDate (D:20200430160325+02'00')
+/Producer <feff004d006900630072006f0073006f0066007400ae00200050006f0077006500720050006f0069006e007400ae0020006600fc00720020004f006600660069006300650020003300360035>
+/Creator <feff004d006900630072006f0073006f0066007400ae00200050006f0077006500720050006f0069006e007400ae0020006600fc00720020004f006600660069006300650020003300360035>
+>>
+endobj"""
+    o = ObjectIter(r5)
+    print(objectIdentifier(o))
+
+    t6 = """<<
+/Type /FontDescriptor
+/FontName /BCDEEE+Calibri
+/Flags 32
+/ItalicAngle 0
+/Ascent 750
+/Descent -250
+/CapHeight 750
+/AvgWidth 521
+/MaxWidth 1743
+/FontWeight 400
+/XHeight 250
+/StemV 52
+/FontBBox [ -503 -250 1240 750]
+/FontFile2 27 0 R
+>>
+endobj"""
+
+    o = ObjectIter(t6)
+
+    print(objectIdentifier(o))

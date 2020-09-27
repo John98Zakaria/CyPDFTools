@@ -43,20 +43,31 @@ class PDFParser:
         while currentChar!=bytes("j","utf-8"):
             currentChar = self.file.read(1)
         currentChar =  self.file.read(1)
-        while currentChar.decode("utf-8").isspace():
+        while currentChar.isspace():
             currentChar = self.file.read(1)
         self.file.seek(-1,io.SEEK_CUR)
-        objectstream = ""
-        while ("endobj" or "stream") not in objectstream:
-            currentChar = self.file.read(1).decode("utf-8")
-            objectstream+=currentChar
+        currentLine = self.file.readline()
+        objectstream= currentLine
+        while True:
+            try:
+                currentLine = self.file.readline()
+                if( (bytes("endobj","utf-8") in currentLine or bytes("stream","utf-8") in currentLine)):
+                    break
+                objectstream+=currentLine
+            except UnicodeDecodeError:
+                break
 
+        endIndex = currentLine.find(bytes("endobj","utf-8")) if (currentLine.find(bytes("endobj","utf-8"))+1) \
+            else currentLine.find(bytes("stream","utf-8"))
+        objectstream += currentLine[:endIndex]
+        assert objectstream[-6:]!=bytes("endobj","utf-8")
+        assert objectstream[-6:]!=bytes("stream","utf-8")
 
-        return objectIdentifier(ObjectIter(objectstream))
+        return objectIdentifier(ObjectIter(objectstream.decode("utf-8")))
 
     def extractObjets(self):
         objects = []
-        for objectIndex in range(1,self.xRef.__len__()):
+        for objectIndex in range(2,self.xRef.__len__()):
             objects.append(self.extractobject(objectIndex))
 
         return objects
@@ -83,13 +94,11 @@ class PDFParser:
 
 
 if __name__ == '__main__':
-    pdf = PDFParser("test_pdfs/Blatt03.pdf")
+    pdf = PDFParser("test_pdfs/PDF-Specifications.pdf")
     print(pdf)
 
-    pdf.seek_object(64)
 
-    print(pdf.file.readline())
-    print(pdf.extractobject(2))
+
     print(pdf.extractObjets())
 
     # # stream = re.compile(b'stream(.*?)endstream', re.S)

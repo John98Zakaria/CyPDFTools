@@ -1,4 +1,4 @@
-SEPERATORS = "\\/[]<>() \t\n"
+SEPERATORS = "\\/[]<> ()\t\n"
 
 class ObjectIter:
 
@@ -21,17 +21,6 @@ class ObjectIter:
         if(trailler in ["endobj","stream"]):
             self.length-=6
 
-
-    def moveToNextObject(self)->None:
-        """
-        Moves pointer to next object in stream
-        :return:
-        """
-        currentChar = self.iterable[self.pointer]
-        while(currentChar not in SEPERATORS):
-            self.pointer +=1
-            currentChar = self.iterable[self.pointer]
-        self.pointer-=1
 
 
 
@@ -74,11 +63,18 @@ class ObjectIter:
         while (self.iterable[self.pointer] != item):
             self.pointer += 1
             if (self.pointer == self.length):
-                if(self.iterable[self.pointer-1]==">"): #Reached end of dict
-                    return self.iterable[pointerStart:self.pointer ]
-                else:
-                    raise IndexError(f"{item} not found")
+                countClosingBraces = 0
+                self.pointer -= 1
+                while(countClosingBraces!=2):
+                    countClosingBraces +=self.iterable[self.pointer]==">"
+                    self.pointer-=1
+                return self.iterable[pointerStart:self.pointer + 1]
+            elif(self.pointer<=self.length):
+                continue
+            else:
+                raise IndexError(f"{item} not found")
         self.pointer -= 1
+
         return self.iterable[pointerStart:self.pointer + 1]
 
     def peek(self):
