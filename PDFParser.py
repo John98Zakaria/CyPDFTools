@@ -3,7 +3,7 @@ from collections import namedtuple
 from XRefTable import *
 import zlib
 import re
-from objectsParser import objectIdentifier
+from objectsParser import parse_stream
 from utills import ObjectIter
 
 class PDFParser:
@@ -64,7 +64,7 @@ class PDFParser:
         assert objectstream[-6:]!=bytes("endobj","utf-8")
         assert objectstream[-6:]!=bytes("stream","utf-8")
 
-        return objectIdentifier(ObjectIter(objectstream.decode("utf-8")))
+        return parse_stream(ObjectIter(objectstream.decode("utf-8")))
 
     def extractObjets(self):
         objects = []

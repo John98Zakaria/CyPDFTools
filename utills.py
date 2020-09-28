@@ -85,8 +85,16 @@ class ObjectIter:
         return rest
 
 
-    def peek(self):
+    def peek(self,n=1):
         """
-        :return: Current item without incrementing the pointer
+        Returns the next n chars without incrementing the counter
+        :param n: number of characters
+        :return: Returns the next n chars without incrementing the counter
         """
-        return self.iterable[self.pointer]
+        try:
+            self.iterable[self.pointer+n+1]
+            out_string = self.iterable[self.pointer+1:self.pointer+n+1]
+        except IndexError:
+            return ""
+
+        return out_string
