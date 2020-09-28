@@ -63,6 +63,7 @@ class PDFParser:
         objectstream += currentLine[:endIndex]
         assert objectstream[-6:]!=bytes("endobj","utf-8")
         assert objectstream[-6:]!=bytes("stream","utf-8")
+        print(self.file.tell())
 
         return parse_stream(ObjectIter(objectstream.decode("utf-8")))
 
@@ -95,14 +96,15 @@ class PDFParser:
 
 
 if __name__ == '__main__':
-    pdf = PDFParser("test_pdfs/Tagneed.pdf")
+    pdf = PDFParser("test_pdfs/MinimalPDF.pdf")
     print(pdf)
 
-    print(pdf.extractobject(5))
-    obs = pdf.extractObjets()
-
-    for o in obs:
-        print(o)
+    print(pdf.extractobject(8))
+    # obs = pdf.extractObjets()
+    print(pdf.file.seek(5773))
+    print(pdf.file.readline())
+    # for o in obs:
+    #     print(o)
 
     # # stream = re.compile(b'stream(.*?)endstream', re.S)
     # st = pdf.file.read(2786)

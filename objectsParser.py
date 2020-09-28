@@ -99,8 +99,13 @@ def parse_stream(streamIter: ObjectIter, letter=None):
             next(streamIter)
     elif letter == "(":
         value = parse_string_literal(streamIter)
-    elif letter == "t" or "f":
+    elif letter in "tf": #handels true/false
         value = streamIter.moveto("e") + next(streamIter)
+    elif letter== "n": #handels null values
+        peek = streamIter.peek(3)
+        if(peek=="ull"):
+            value = "null"
+            streamIter.pointer+=3
 
     skip_space(streamIter)
 
