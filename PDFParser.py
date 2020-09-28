@@ -6,14 +6,15 @@ import re
 from objectsParser import parse_stream
 from utills import ObjectIter
 
+
 class PDFParser:
     def __init__(self, filePath):
         self.file = open(filePath, "rb+")
         self.filePath = filePath
-        self.xRef:XRefTable = XRefTable
+        self.xRef: XRefTable = XRefTable
         self.pdfObjects = []
+        self.trailer_end = 0
         self.xRefParser()
-
 
     def xRefParser(self):
         self.file.seek(-5, io.SEEK_END)
@@ -22,61 +23,77 @@ class PDFParser:
             self.file.seek(-2, io.SEEK_CUR)
             char = self.file.read(1).decode("utf-8")
             count += char == "\n"
+        print(f"{self.file.tell()} In parse")
+        self.trailer_end = self.file.tell()
         xrefAddress = int(self.file.readline()[:-1])
         self.file.seek(xrefAddress, io.SEEK_SET)  # Seek to xRefTable
         self.file.readline()
         entries = self.file.readline().decode("UTF-8").split(" ")[1]  # get number of xrefItems
         print(entries)  # get number of xrefItems
         xrefLength = int(entries)
-        xRefTable = self.file.readlines(xrefLength*20 - 1)
+        xRefTable = self.file.readlines(xrefLength * 20 - 1)
         self.xRef = XRefTable(xrefAddress, xRefTable)
+
+    def trailer_parser(self):
+        pdf.file.seek(self.xRef.address)
+        pdf.file.readlines(len(self.xRef.table) * 20)
+        pdf.file.seek(8, io.SEEK_CUR)
+        trailerStart = pdf.file.tell()
+        content = pdf.file.read(self.trailer_end - 10 - trailerStart)
+        print(content)
+        trailer_dict = parse_stream(ObjectIter(content.decode("utf-8")))
+        print(trailer_dict)
+        pass
 
     def seek_object(self, number: int) -> None:
         address = self.xRef.table[number].address
         print(f"The adress of object {number} is {address}")
         self.file.seek(address, io.SEEK_SET)
 
-    def extractobject(self,number):
+    def extractobject(self, number):
         self.seek_object(number)
-        currentChar = self.file.read(1)
-        assert (currentChar.isdigit())
-        while currentChar!=bytes("j","utf-8"):
-            currentChar = self.file.read(1)
-        currentChar =  self.file.read(1)
-        while currentChar.isspace():
-            currentChar = self.file.read(1)
-        self.file.seek(-1,io.SEEK_CUR)
-        currentLine = self.file.readline()
-        objectstream= b""
+        current_char = self.file.read(1)
+        assert (current_char.isdigit())
+        object_number = current_char
+        while current_char != bytes("j", "utf-8"):
+            current_char = self.file.read(1)
+            object_number += current_char
+        number = re.match(br"(\d+) (\d+)", object_number)
+        current_char = self.file.read(1)
+        while current_char.isspace():
+            current_char = self.file.read(1)
+        self.file.seek(-1, io.SEEK_CUR)
+        current_line = self.file.readline()
+        object_stream = b""
         while True:
             try:
-                if( (bytes("endobj","utf-8") in currentLine or bytes("stream","utf-8") in currentLine)):
+                if bytes("endobj", "utf-8") in current_line or bytes("stream", "utf-8") in current_line:
                     break
-                objectstream+=currentLine
-                currentLine = self.file.readline()
+                object_stream += current_line
+                current_line = self.file.readline()
 
             except UnicodeDecodeError:
                 break
 
-        endIndex = currentLine.find(bytes("endobj","utf-8")) if (currentLine.find(bytes("endobj","utf-8"))+1) \
-            else currentLine.find(bytes("stream","utf-8"))
-        objectstream += currentLine[:endIndex]
-        assert objectstream[-6:]!=bytes("endobj","utf-8")
-        assert objectstream[-6:]!=bytes("stream","utf-8")
+        endIndex = current_line.find(bytes("endobj", "utf-8")) if (current_line.find(bytes("endobj", "utf-8")) + 1) \
+            else current_line.find(bytes("stream", "utf-8"))
+        object_stream += current_line[:endIndex]
+        assert object_stream[-6:] != bytes("endobj", "utf-8")
+        assert object_stream[-6:] != bytes("stream", "utf-8")
         print(self.file.tell())
 
-        return parse_stream(ObjectIter(objectstream.decode("utf-8")))
+        return parse_stream(ObjectIter(object_stream.decode("utf-8")))
 
     def extractObjets(self):
         objects = []
-        for objectIndex in range(1,self.xRef.__len__()):
+        for objectIndex in range(1, self.xRef.__len__()):
             objects.append(self.extractobject(objectIndex))
 
         return objects
 
     @classmethod
     def parse_xRefentry(cls, entry: bytes) -> tuple:
-        if (type(entry) == bytes):
+        if type(entry) == bytes:
             entry = entry.decode("utf-8")
         entry = entry.split(" ")[:-1]
         entry[0] = int(entry[0])
@@ -96,13 +113,24 @@ class PDFParser:
 
 
 if __name__ == '__main__':
-    pdf = PDFParser("test_pdfs/MinimalPDF.pdf")
-    print(pdf)
+    pdf = PDFParser("test_pdfs/MinimalPDf.pdf")
+    pdf.trailer_parser()
+    # print(pdf)
+    # print(pdf.file.seek(7342-10))
+    # print(pdf.file.readline())
+    # print(pdf.file.seek(6870))
+    # print(pdf.file.readline())
+    # print(pdf.file.readlines(14*20))
+    # print(f"Current Trailler Start {pdf.file.tell()}")
+    # print(pdf.file.readline())
+    # pdf.file.seek(7160)
+    # print(pdf.file.read(7342-10-7160))
 
-    print(pdf.extractobject(8))
-    # obs = pdf.extractObjets()
-    print(pdf.file.seek(5773))
-    print(pdf.file.readline())
+    #
+    # print(pdf.extractobject(8))
+    # # obs = pdf.extractObjets()
+    # print(pdf.file.seek(5773))
+    # print(pdf.file.readline())
     # for o in obs:
     #     print(o)
 

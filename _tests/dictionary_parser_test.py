@@ -4,7 +4,7 @@ from objectsParser import *
 
 def test_OnSameLine():
     t1 = (rf"""/Type/Page/BleedBox[ 0 0 504 661.5]/Contents 5 0 R/CropBox[ 0 0 504 661.5]/MediaBox[ 0 0 504 661.5]/Parent 3493 0 R/Resources<</Font<</F3 2186 0 R>>/ProcSet[/Text/ImageC]>>/Rotate 0/Trans<<>>>>""")
-    assert (parse_dictionary(t1) =={'Type': 'Page', 'BleedBox': ['0', '0', '504', '661.5'], 'Contents': IndirectObjectRef(5),
+    assert (parse_dictionary(t1).data =={'Type': 'Page', 'BleedBox': ['0', '0', '504', '661.5'], 'Contents': IndirectObjectRef(5),
                 'CropBox': ['0', '0', '504', '661.5'], 'MediaBox': ['0', '0', '504', '661.5'],
                 'Parent': IndirectObjectRef(3493), 'Resources': {'Font': {'F3': IndirectObjectRef(2186)},
                                                       'ProcSet': ['/Text/ImageC']},
@@ -46,8 +46,8 @@ def test_ListParsing():
 ] /Count 30
 >>"""
 
-    assert parse_dictionary(l1)==    {'/Count': '30',
-     '/Kids': [IndirectObjectRef(4),IndirectObjectRef(26), IndirectObjectRef(40),IndirectObjectRef(46),
+    assert parse_dictionary(l1).data==    {'/Count': '30',
+     '/Kids': PDFArray([IndirectObjectRef(4),IndirectObjectRef(26), IndirectObjectRef(40),IndirectObjectRef(46),
                IndirectObjectRef(52),IndirectObjectRef(58),
                IndirectObjectRef(64),IndirectObjectRef(70),
                IndirectObjectRef(76),IndirectObjectRef(82),IndirectObjectRef(88),
@@ -57,7 +57,7 @@ def test_ListParsing():
                IndirectObjectRef(156),IndirectObjectRef(164),IndirectObjectRef(170),
                IndirectObjectRef(176),IndirectObjectRef(182),IndirectObjectRef(189),
                IndirectObjectRef(195),IndirectObjectRef(201),IndirectObjectRef(211),
-               IndirectObjectRef(224)],
+               IndirectObjectRef(224)]),
                 '/Type': '/Pages'}
 
 
@@ -68,14 +68,15 @@ def test_ListParsing():
 0 0 0 0 415 0 0 0 0 590]
 /Encoding/WinAnsiEncoding/Subtype/Type1>>"""
 
-    assert parse_dictionary(t2) =={'BaseFont': 'FWRCSR+CMMIB10',
-                     'FontDescriptor': IndirectObjectRef(34),
-                     'Type': 'Font', 'FirstChar': '78',
-                     'LastChar': '121',
-                     'Widths': ['950', '0\n0', '0', '0', '0', '0', '0', '0', '0', '947', '674', '0', '0', '0', '0', '0',
-                                '0\n0', '0', '0', '0', '0', '0', '0', '544', '0', '0', '0', '0', '0', '0', '0', '0\n0',
-                                '0' , '0', '0', '415', '0', '0', '0', '0', '590'],
-                     'Encoding': 'WinAnsiEncoding', 'Subtype': 'Type1'}
+    assert parse_dictionary(t2).data =={'/BaseFont': '/FWRCSR+CMMIB10',
+                     '/FontDescriptor': IndirectObjectRef(34),
+                     '/Type': '/Font', '/FirstChar': '78',
+                     '/LastChar': '121',
+                     '/Widths': PDFArray(["950", "0", "0", "0", "0", "0", "0", "0", "0", "0", "947",
+                                "674", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
+                                "0", "0", "544", "0", "0", "0", "0", "0", "0", "0", "0", "0",
+                                "0", "0", "0", "415", "0", "0", "0", "0", "590"]),
+                     '/Encoding': '/WinAnsiEncoding', '/Subtype': '/Type1'}
 
 
 
@@ -86,7 +87,7 @@ def test_StringLiterals():
            /ModDate (D:20200504155420+02'00')
            /Trapped /False
            /PTEX.Fullbanner (This is MiKTeX-pdfTeX 2.9.7338 (1.40.21))"""
-    assert parse_dictionary(l1) == {'/CreationDate': "(D:20200504155420+02'00')",
+    assert parse_dictionary(l1).data == {'/CreationDate': "(D:20200504155420+02'00')",
  '/Creator': '(TeX)',
  '/ModDate': "(D:20200504155420+02'00')",
  '/PTEX.Fullbanner': '(This is MiKTeX-pdfTeX 2.9.7338 (1.40.21))',
@@ -99,7 +100,7 @@ def test_StringLiterals():
     /Trapped /False
     /PTEX.Fullbanner (This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019) kpathsea version 6.3.1)"""
 
-    assert parse_dictionary(l2) == {'/Author': '()',
+    assert parse_dictionary(l2).data == {'/Author': '()',
  '/CreationDate': "(D:20200419154240+02'00')",
  '/Creator': '(þÿ\x00L\x00a\x00T\x00e\x00X\x00 \x00v\x00i\x00a\x00 '
              '\x00p\x00a\x00n\x00d\x00o\x00c)',
@@ -120,7 +121,7 @@ def test_multiline():
 /First 522
 /Length 2786      
 /Filter /FlateDecode"""
-    assert parse_dictionary(t1) == {'/Type': '/ObjStm', '/N': "68",
+    assert parse_dictionary(t1).data == {'/Type': '/ObjStm', '/N': "68",
                              '/First': "522",
                              '/Length': "2786", '/Filter': '/FlateDecode'}
 

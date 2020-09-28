@@ -4,10 +4,10 @@ from collections import namedtuple
 class XRefTable:
     def __init__(self, xref_address: int, xref_table: list):
         self.address = xref_address
-        self.table = self.parseTable(xref_table)
+        self.table = self.parse_table(xref_table)
 
     @staticmethod
-    def parseTable(table):
+    def parse_table(table):
         def parse_entry(entry: bytes) -> tuple:
             if (type(entry) == bytes):
                 entry = entry.decode("utf-8")
