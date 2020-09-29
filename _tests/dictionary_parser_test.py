@@ -3,7 +3,7 @@ from objectsParser import *
 
 
 def test_OnSameLine():
-    t1 = (rf"""/Type/Page/BleedBox[ 0 0 504 661.5]/Contents 5 0 R/CropBox[ 0 0 504 661.5]/MediaBox[ 0 0 504 661.5]/Parent 3493 0 R/Resources<</Font<</F3 2186 0 R>>/ProcSet[/Text/ImageC]>>/Rotate 0/Trans<<>>>>""")
+    t1 = (b"""/Type/Page/BleedBox[ 0 0 504 661.5]/Contents 5 0 R/CropBox[ 0 0 504 661.5]/MediaBox[ 0 0 504 661.5]/Parent 3493 0 R/Resources<</Font<</F3 2186 0 R>>/ProcSet[/Text/ImageC]>>/Rotate 0/Trans<<>>>>""")
     assert (parse_dictionary(t1).data =={'Type': 'Page', 'BleedBox': ['0', '0', '504', '661.5'], 'Contents': IndirectObjectRef(5),
                 'CropBox': ['0', '0', '504', '661.5'], 'MediaBox': ['0', '0', '504', '661.5'],
                 'Parent': IndirectObjectRef(3493), 'Resources': {'Font': {'F3': IndirectObjectRef(2186)},
@@ -116,7 +116,7 @@ def test_StringLiterals():
 
 
 def test_multiline():
-    t1 = """/Type /ObjStm
+    t1 = b"""/Type /ObjStm
 /N 68
 /First 522
 /Length 2786      

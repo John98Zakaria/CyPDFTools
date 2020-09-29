@@ -100,7 +100,11 @@ def parse_stream(streamIter: ObjectIter, letter=None):
             value = parse_dictionary(streamIter)
         else:
             value = b"<" + letter +streamIter.moveto(b">") + b">"
-            next(streamIter)
+            try:
+                next(streamIter)
+            except StopIteration:
+                return value
+
     elif letter == b"(":
         value = parse_string_literal(streamIter)
     elif letter in b"tf":  # handels true/false
@@ -165,9 +169,15 @@ def parse_arrayObjects(array_str: bytes):
 
 if __name__ == '__main__':
     ##Bad table
-    t1 = """/Type/Annot/Border[ 0 0 0]/Dest[ 4863 0 R/XYZ 76.450073 383.27719 0]/F 4/Rect[ 167.25 565.5 447.75 582]/Subtype/Link>>"""
-    # print(parseDict(t1))
-    #
+    t1 = b"""/Type/Annot/Border[ 0 0 0]/Dest[ 4863 0 R/XYZ 76.450073 383.27719 0]/F 4/Rect[ 167.25 565.5 447.75 582]/Subtype/Link>>"""
+    parse_dictionary(t1)
+
+    parse_arrayObjects(b'<F6BF5D976038EA4C968074C82AB159D8><3B6F6B904D0C5440BCE35DB1FD6F6BAF>')
+
+    # print(parse_stream(ObjectIter(b'<</BaseFont/JIDMBG+MonotypeSorts/CIDSystemInfo 299 0 R/CIDToGIDMap/Identity/DW 1000/FontDescriptor 300 0 R/Subtype/CIDFontType2/Type/Font/W[81[761]]>>\r')))
+
+    print(parse_dictionary(b"<<>>"))
+    # print(parse_stream(ObjectIter(b'<</BitsPerComponent 8/ColorSpace 282 0 R/DecodeParms[<<>>]/Filter[/DCTDecode]/Height 187/Length 2912/Subtype/Image/Type/XObject/Width 187>>')))
     # t2 = """/Subtype/Image
     # /ColorSpace/DeviceGray
     # /Width 360
@@ -437,7 +447,7 @@ null]
     # print(parse_dictionary(l1))
 
 
-    print(parse_arrayObjects(b' <D1314BD7F74849CDFA34B503910604A1>\n<D1314BD7F74849CDFA34B503910604A1> '))
+    # print(parse_arrayObjects(b' <D1314BD7F74849CDFA34B503910604A1>\n<D1314BD7F74849CDFA34B503910604A1> '))
     # arr = b"2 0 R"
     # # todo investigate bug
     # it = ObjectIter(arr)

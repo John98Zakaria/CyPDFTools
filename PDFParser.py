@@ -69,20 +69,18 @@ class PDFParser:
         current_line = self.file.readline()
         object_stream = b""
         while True:
-            try:
-                if bytes("endobj", "utf-8") in current_line or bytes("stream", "utf-8") in current_line:
-                    break
-                object_stream += current_line
-                current_line = self.file.readline()
-
-            except UnicodeDecodeError:
+            if bytes("endobj", "utf-8") in current_line or bytes("stream", "utf-8") in current_line:
                 break
-        isStream = current_line.find(bytes("stream\n", "utf-8"))
+            object_stream += current_line
+            current_line = self.file.readline()
+
+
+        isStream = current_line.find(bytes("stream", "utf-8"))
         endIndex = isStream if isStream+1 \
             else current_line.find(bytes("endobj", "utf-8"))
         object_stream += current_line[:endIndex]
         assert object_stream[-6:] != bytes("endobj", "utf-8")
-        assert object_stream[-7:] != bytes("stream\n", "utf-8")
+        assert object_stream[-6:] != bytes("stream", "utf-8")
         thing = parse_stream(ObjectIter(object_stream))
         if isStream+1:
             ob =  (PDFStream(thing,num,rev,self.file.tell(),inuse),num)
@@ -93,17 +91,6 @@ class PDFParser:
 
         return (PDFObject(thing,num,rev,self.file.tell(),inuse),num)
 
-    def read_all_objects(self):
-        objects = []
-
-        for objectIndex in tqdm(range(1, self.xRef.__len__())):
-            try:
-                objects.append(self.extract_object(objectIndex))
-            except AssertionError:
-                continue
-
-        objects.sort(key=lambda x:int(x[1]))
-        return objects
 
     @classmethod
     def parse_xRefentry(cls, entry: bytes) -> tuple:
@@ -145,6 +132,20 @@ class PDFParser:
 
 
 
+    def read_all_objects(self):
+        objects = []
+
+        for objectIndex in tqdm(range(1, self.xRef.__len__())):
+            try:
+                print(f"Now at {objectIndex}")
+
+                objects.append(self.extract_object(objectIndex))
+            except  Exception as e:
+                print(f"{objectIndex} has {e}" )
+                continue
+
+        objects.sort(key=lambda x:int(x[1]))
+        return objects
 
 
 
@@ -153,6 +154,7 @@ if __name__ == '__main__':
 
 
     pdf = PDFParser("test_pdfs/MinimalPDf.pdf")
+    # pdf.extract_object(306)
     # pdf.clone()
     # pdf.trailer_parser()
     # pdf = PDFParser("out.pdf")

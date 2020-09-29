@@ -65,13 +65,22 @@ class ObjectIter:
         nextbyte = self.peek(1)
         while (nextbyte != item):
             if (self.iterable.tell() == self.length):
+                pointer = self.iterable.tell()
+                self.iterable.seek(-1, SEEK_CUR)
+                pointer = self.iterable.tell()
                 countClosingBraces = 0
+                curr = self.iterable.read(1)
+                pointer = self.iterable.tell()
                 while (countClosingBraces != 2):
-                    countClosingBraces += self.iterable.read(1) == b">"
+                    pointer = self.iterable.tell()
+                    countClosingBraces += curr == b">"
+                    self.iterable.seek(-2,SEEK_CUR)
+                    curr =  self.iterable.read(1)
+
                 poiterEnd = self.iterable.tell()
                 self.iterable.seek(pointerStart - poiterEnd, SEEK_CUR)
                 return self.iterable.read(poiterEnd-pointerStart)
-            elif (self.iterable.tell() <= self.length):
+            if (self.iterable.tell() <= self.length):
                 self.iterable.read(1)
                 nextbyte = self.peek(1)
                 continue
