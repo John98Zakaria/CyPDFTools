@@ -1,19 +1,19 @@
-import io
-from collections import namedtuple
-
+from PDFObjects import IndirectObjectRef
 from PDFStructureObjects import *
 import re
 from objectsParser import parse_stream
 from utills import ObjectIter
+from tqdm import tqdm
 
 
 class PDFParser:
     def __init__(self, filePath):
-        self.file = open(filePath, "rb+")
+        self.file = open(filePath, "rb")
         self.filePath = filePath
         self.xRef: XRefTable = XRefTable
         self.trailer_end = 0
         self.xRefParser()
+        self.trailer = self.trailer_parser()
         self.pdfObjects = self.read_all_objects()
 
 
@@ -36,24 +36,24 @@ class PDFParser:
         self.xRef = XRefTable(xrefAddress, xRefTable)
 
     def trailer_parser(self):
-        pdf.file.seek(self.xRef.address)
-        pdf.file.readlines(len(self.xRef.table) * 20)
-        pdf.file.seek(8, io.SEEK_CUR)
-        trailerStart = pdf.file.tell()
-        content = pdf.file.read(self.trailer_end - 10 - trailerStart)
-        print(content)
+        self.file.seek(self.xRef.address)
+        self.file.readlines(len(self.xRef.table) * 20)
+        self.file.seek(8, io.SEEK_CUR)
+        trailerStart = self.file.tell()
+        content = self.file.read(self.trailer_end - 10 - trailerStart)
         trailer_dict = parse_stream(ObjectIter(content.decode("utf-8")))
-        print(trailer_dict)
-        pass
+        return trailer_dict
 
-    def seek_object(self, number: int) -> None:
+    def seek_object(self, number: int) -> int:
         address = self.xRef.table[number].address
-        print(f"The adress of object {number} is {address}")
         self.file.seek(address, io.SEEK_SET)
+        return address
 
     def extract_object(self, number):
         self.seek_object(number)
         inuse = self.xRef.table[number].in_use_entry
+        if(inuse=="f"):
+            raise AssertionError("Free")
         current_char = self.file.read(1)
         assert (current_char.isdigit())
         object_number = current_char
@@ -61,7 +61,7 @@ class PDFParser:
             current_char = self.file.read(1)
             object_number += current_char
         numRev = re.match(br"(\d+) (\d+)", object_number)
-        num,rev = numRev.group(0),numRev.group(1)
+        num,rev = numRev.group(1).decode("utf-8"),numRev.group(2).decode("utf-8")
         current_char = self.file.read(1)
         while current_char.isspace():
             current_char = self.file.read(1)
@@ -77,24 +77,32 @@ class PDFParser:
 
             except UnicodeDecodeError:
                 break
-        isStream = current_line.find(bytes("stream", "utf-8"))
+        isStream = current_line.find(bytes("stream\n", "utf-8"))
         endIndex = isStream if isStream+1 \
             else current_line.find(bytes("endobj", "utf-8"))
         object_stream += current_line[:endIndex]
         assert object_stream[-6:] != bytes("endobj", "utf-8")
-        assert object_stream[-6:] != bytes("stream", "utf-8")
+        assert object_stream[-7:] != bytes("stream\n", "utf-8")
         thing = parse_stream(ObjectIter(object_stream.decode("utf-8")))
-        if(isStream+1):
-            return (PDFStream(thing,0,inuse),num)
+        if isStream+1:
+            ob =  (PDFStream(thing,num,rev,self.file.tell(),inuse),num)
+            if(type(ob[0].length)==IndirectObjectRef):
+                l = self.extract_object(int(ob[0].length))[0].stream_dict
+                ob[0].length=int(l)
+            return ob
 
-        return (PDFObject(thing,0,inuse),num)
+        return (PDFObject(thing,num,rev,self.file.tell(),inuse),num)
 
     def read_all_objects(self):
         objects = []
 
-        for objectIndex in range(1, self.xRef.__len__()):
-            objects.append(self.extract_object(objectIndex))
-        objects.sort(key=lambda x:x[1])
+        for objectIndex in tqdm(range(1, self.xRef.__len__())):
+            try:
+                objects.append(self.extract_object(objectIndex))
+            except AssertionError:
+                continue
+
+        objects.sort(key=lambda x:int(x[1]))
         return objects
 
     @classmethod
@@ -117,14 +125,37 @@ class PDFParser:
     def __repr__(self):
         return self.__str__()
 
+    def clone(self):
+        newXrefTable = ["0 65535 f"]
+        with open("out.pdf","wb+")as f:
+            f.write(b"%PDF-1.5\n")
+            for object in tqdm(self.pdfObjects):
+                pos = str(f.tell())
+                rev = str(object[0].object_rev)
+                inuse = object[0].inuse
+                newXrefTable.append(f"{pos} {rev} {inuse}")
+                f.write(object[0].to_bytes(pdf.file)+b"\n")
+            xrefpos = f.tell()
+            newXrefTable = XRefTable(xrefpos,newXrefTable)
+            f.write(newXrefTable.__str__().encode("utf-8"))
+            f.write(b"trailer\n")
+            # self.trailer.data.pop("/DocChecksum")
+            f.write(self.trailer.__str__().encode("utf-8")+b"\n")
+            f.write(f"startxref\n{xrefpos}\n%%EOF\n".encode("utf-8"))
+
+
+
+
+
+
 
 if __name__ == '__main__':
-    pdf = PDFParser("test_pdfs/Blatt03.pdf")
-    # pdf.trailer_parser()
 
-    print(pdf.xRef)
-    print(pdf)
-    # print(pdf.extract_object(3)[0])
+
+    pdf = PDFParser("test_pdfs/Learning Scala - Jason Swartz_125.pdf")
+    pdf.clone()
+    # pdf.trailer_parser()
+    # pdf = PDFParser("out.pdf")
     # print(pdf.file.readline())
     # print(pdf.file.seek(6870))
     # print(pdf.file.readline())

@@ -11,6 +11,9 @@ class IndirectObjectRef:
     def __repr__(self):
         return self.__str__()
 
+    def __int__(self):
+        return self.objectref
+
     def __eq__(self, other):
         return self.objectref == other.objectref
 
@@ -48,11 +51,13 @@ class PDFDict:
     def __getitem__(self, item):
         return self.data[item]
 
+
+
     def __str__(self):
         out_string = ""
         for key, value in zip(self.data.keys(), self.data.values()):
             out_string += f"{key} {value}\n"
-        out_string = "<<\n" + out_string + "\n>>"
+        out_string = "<<\n" + out_string + ">>"
         return out_string
 
     def __repr__(self):
