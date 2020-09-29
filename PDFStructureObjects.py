@@ -7,34 +7,41 @@ from PDFObjects import PDFDict
 
 @dataclass
 class PDFStream:
-    def __init__(self,stream_dict:PDFDict,startAdress,inuse):
+    def __init__(self,stream_dict:PDFDict,object_number,object_rev,startAdress,inuse):
         self.stream_dict = stream_dict
-        self.startAddress = startAdress
+        self.object_number = object_number
+        self.object_rev = object_rev
         self.length = stream_dict["/Length"]
+        self.startAddress = startAdress
+
         self.inuse = inuse
 
     def read_stream(self,file:io.BytesIO)->bytes:
-        pass
+        file.seek(self.startAddress)
+        return file.read(int(self.length))
 
-    def to_bytes(self,file:io.BytesIO,obj_number,object_rev)->bytes:
-        byte_representation = f"{obj_number} {object_rev} obj\n{self.stream_dict}".encode("utf-8")
+    def to_bytes(self,file:io.BytesIO)->bytes:
+        byte_representation = f"{self.object_number} {self.object_rev} obj\n{self.stream_dict}\nstream\n".encode("utf-8")
         byte_representation+= self.read_stream(file)
-        byte_representation+="\nendsteam\nendobj"
+        byte_representation+="\nendsteam\nendobj\n".encode("utf-8")
+        return byte_representation
 
     def __str__(self):
         return f"StreamObject {self.stream_dict}"
 
 class PDFObject:
-    def __init__(self, stream_dict, startAdress,inuse):
+    def __init__(self, stream_dict,object_number,object_rev, startAdress,inuse):
         self.stream_dict = stream_dict
         self.startAddress = startAdress
+        self.object_number = object_number
+        self.object_rev = object_rev
         self.inuse = inuse
 
     def read_stream(self, file: io.BytesIO):
         return b""
 
-    def to_bytes(self,file:io.BytesIO,obj_number, object_rev) -> bytes:
-        byte_representation = f"{obj_number} {object_rev} obj\n{self.stream_dict}\nendobj\n".encode("utf-8")
+    def to_bytes(self,file:io.BytesIO) -> bytes:
+        byte_representation = f"{self.object_number} {self.object_rev} obj\n{self.stream_dict}\nendobj\n".encode("utf-8")
         return byte_representation
 
     def __str__(self):
