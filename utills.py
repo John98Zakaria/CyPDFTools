@@ -95,6 +95,7 @@ class ObjectIter:
             self.iterable[self.pointer+n+1]
             out_string = self.iterable[self.pointer+1:self.pointer+n+1]
         except IndexError:
-            return ""
+            #todo investigate bug
+            return self.iterable[self.pointer+1:self.pointer+n+1]
 
         return out_string

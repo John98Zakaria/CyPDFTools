@@ -1,7 +1,6 @@
 from utills import ObjectIter
 from PDFObjects import *
 from typing import Iterable, List
-import re
 
 SEPERATORS = "\\/[]<>() \t\n"
 
@@ -28,7 +27,7 @@ def skip_space(stream: ObjectIter) -> str:
     :param stream: Any iterable object
     :return: First letter after the whitespace
     """
-    if(not stream.peek(1).isspace()):
+    if (not stream.peek(1).isspace()):
         return ""
     for _ in stream:
         if (not stream.peek(1).isspace()):
@@ -56,26 +55,25 @@ def parse_string_literal(stream: ObjectIter) -> str:
     return out_string
 
 
-def parse_numeric(init, stream: ObjectIter):
+def parse_numeric(init: str, stream: ObjectIter):
     number: str = init
     for char in stream:
         if (char in "\\/[]<>()\t\n"):
             stream.prev()
             break
-        elif (char==" "):
+        elif (char == " "):
             upcomingchars = stream.peek(3)
-            isRef = upcomingchars=="0 R"
-            if(isRef):
-                stream.pointer+=3
+            isRef = upcomingchars == "0 R"
+            if (isRef):
+                stream.pointer += 3
                 return IndirectObjectRef(number)
             else:
                 return number
-        elif (not char.isnumeric() and char!="."):
+        elif (not char.isnumeric() and char != "."):
             number += stream.finishNumber()
             break
         number += char
     return number
-
 
 
 def parse_stream(streamIter: ObjectIter, letter=None):
@@ -99,13 +97,13 @@ def parse_stream(streamIter: ObjectIter, letter=None):
             next(streamIter)
     elif letter == "(":
         value = parse_string_literal(streamIter)
-    elif letter in "tf": #handels true/false
+    elif letter in "tf":  # handels true/false
         value = streamIter.moveto("e") + next(streamIter)
-    elif letter== "n": #handels null values
+    elif letter == "n":  # handels null values
         peek = streamIter.peek(3)
-        if(peek=="ull"):
+        if (peek == "ull"):
             value = "null"
-            streamIter.pointer+=3
+            streamIter.pointer += 3
 
     skip_space(streamIter)
 
@@ -132,7 +130,6 @@ def parse_dictionary(pdf_stream):
         # parse value
         value = parse_stream(streamIter, letter)
 
-
         object_dict[key] = value
 
     return PDFDict(object_dict)
@@ -153,7 +150,7 @@ def parse_arrayObjects(array_str: str):
     stream_iter = ObjectIter(array_str)
     array = []
     for char in stream_iter:
-        if(char.isspace()):
+        if (char.isspace()):
             continue
         item = parse_stream(stream_iter, char)
         array.append(item)
@@ -211,11 +208,11 @@ if __name__ == '__main__':
     ] /Count 30
     >>"""
 
+    # print(parse_dictionary(l1))
 
-    print(parse_dictionary(l1))
-
-#     arr = "5 0 9 7"
-#     print(parse_arrayObjects(arr))
+    arr = "2 0 R 15 0 R 29 0 R"
+    # todo investigate bug
+    # print(parse_arrayObjects(arr))
 #
 #     t2 = """/R17
 #        17 0 R>>"""

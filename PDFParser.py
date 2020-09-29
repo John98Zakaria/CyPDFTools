@@ -1,7 +1,7 @@
 import io
 from collections import namedtuple
-from XRefTable import *
-import zlib
+
+from PDFStructureObjects import *
 import re
 from objectsParser import parse_stream
 from utills import ObjectIter
@@ -12,9 +12,10 @@ class PDFParser:
         self.file = open(filePath, "rb+")
         self.filePath = filePath
         self.xRef: XRefTable = XRefTable
-        self.pdfObjects = []
         self.trailer_end = 0
         self.xRefParser()
+        self.pdfObjects = self.read_all_objects()
+
 
     def xRefParser(self):
         self.file.seek(-5, io.SEEK_END)
@@ -50,15 +51,17 @@ class PDFParser:
         print(f"The adress of object {number} is {address}")
         self.file.seek(address, io.SEEK_SET)
 
-    def extractobject(self, number):
+    def extract_object(self, number):
         self.seek_object(number)
+        inuse = self.xRef.table[number].in_use_entry
         current_char = self.file.read(1)
         assert (current_char.isdigit())
         object_number = current_char
         while current_char != bytes("j", "utf-8"):
             current_char = self.file.read(1)
             object_number += current_char
-        number = re.match(br"(\d+) (\d+)", object_number)
+        numRev = re.match(br"(\d+) (\d+)", object_number)
+        num,rev = numRev.group(0),numRev.group(1)
         current_char = self.file.read(1)
         while current_char.isspace():
             current_char = self.file.read(1)
@@ -74,21 +77,24 @@ class PDFParser:
 
             except UnicodeDecodeError:
                 break
-
-        endIndex = current_line.find(bytes("endobj", "utf-8")) if (current_line.find(bytes("endobj", "utf-8")) + 1) \
-            else current_line.find(bytes("stream", "utf-8"))
+        isStream = current_line.find(bytes("stream", "utf-8"))
+        endIndex = isStream if isStream+1 \
+            else current_line.find(bytes("endobj", "utf-8"))
         object_stream += current_line[:endIndex]
         assert object_stream[-6:] != bytes("endobj", "utf-8")
         assert object_stream[-6:] != bytes("stream", "utf-8")
-        print(self.file.tell())
+        thing = parse_stream(ObjectIter(object_stream.decode("utf-8")))
+        if(isStream+1):
+            return (PDFStream(thing,0,inuse),num)
 
-        return parse_stream(ObjectIter(object_stream.decode("utf-8")))
+        return (PDFObject(thing,0,inuse),num)
 
-    def extractObjets(self):
+    def read_all_objects(self):
         objects = []
-        for objectIndex in range(1, self.xRef.__len__()):
-            objects.append(self.extractobject(objectIndex))
 
+        for objectIndex in range(1, self.xRef.__len__()):
+            objects.append(self.extract_object(objectIndex))
+        objects.sort(key=lambda x:x[1])
         return objects
 
     @classmethod
@@ -113,10 +119,12 @@ class PDFParser:
 
 
 if __name__ == '__main__':
-    pdf = PDFParser("test_pdfs/MinimalPDf.pdf")
-    pdf.trailer_parser()
-    # print(pdf)
-    # print(pdf.file.seek(7342-10))
+    pdf = PDFParser("test_pdfs/Blatt03.pdf")
+    # pdf.trailer_parser()
+
+    print(pdf.xRef)
+    print(pdf)
+    # print(pdf.extract_object(3)[0])
     # print(pdf.file.readline())
     # print(pdf.file.seek(6870))
     # print(pdf.file.readline())
