@@ -1,16 +1,19 @@
 SEPERATORS = "\\/[]<> ()\t\n"
 
+from io import BytesIO,SEEK_CUR,SEEK_SET,SEEK_END
 
 class ObjectIter:
 
-    def __init__(self, iterable, pointer=-1):
+    def __init__(self, iterable:bytes, pointer=0):
         """
         :param iterable: Any object that supports __getitem__ ([index] operator)
         :param pointer: A pointer to the start index
         """
-        self.iterable = iterable
-        self.pointer = pointer
-        self.length = len(iterable)
+        self.iterable = BytesIO(iterable)
+        self.iterable.seek(pointer)
+        self.length = self.iterable.seek(0,SEEK_END)
+        self.deb = iterable
+        self.iterable.seek(0)
         self._clean()
 
     def _clean(self):
@@ -18,15 +21,14 @@ class ObjectIter:
         Removes endobj/stream from iterator
         :return:
         """
-        trailler = self.iterable[-6:]
-        if (trailler in ["endobj", "stream"]):
-            self.length -= 6
+        while self.peek(1).isspace():
+            self.iterable.seek(1,SEEK_CUR)
 
     def prepareDictParse(self) -> None:
         """
         Moves the Pointer to the item preceding a forward slash /
         """
-        self.moveto("/")
+        self.moveto(b"/")
 
     def __len__(self):
         return self.length
@@ -35,20 +37,23 @@ class ObjectIter:
         return self
 
     def __next__(self):
-        self.pointer += 1
-        if (self.pointer >= self.length):
+
+        po = self.iterable.tell()
+        byte = self.iterable.read(1)
+        if(byte==b""):
             raise StopIteration
-        return self.iterable[self.pointer]
+        return byte
 
     def prev(self) -> any:
         """
         Decrements the counter
         :return: Previous element
         """
-        self.pointer -= 1
-        if (self.pointer < -1):
-            raise StopIteration
-        return self.iterable[self.pointer]
+        self.iterable.seek(-2,SEEK_CUR)
+        return self.iterable.read(1)
+
+    def move_poiter(self,n):
+        self.iterable.seek(n,SEEK_CUR)
 
     def moveto(self, item):
         """
@@ -56,29 +61,33 @@ class ObjectIter:
         :param item: item to move to
         :return: Items since the beginning of iteration till end
         """
-        pointerStart = self.pointer
-        while (self.iterable[self.pointer] != item):
-            self.pointer += 1
-            if (self.pointer == self.length):
+        pointerStart = self.iterable.tell()
+        nextbyte = self.peek(1)
+        while (nextbyte != item):
+            if (self.iterable.tell() == self.length):
                 countClosingBraces = 0
-                self.pointer -= 1
                 while (countClosingBraces != 2):
-                    countClosingBraces += self.iterable[self.pointer] == ">"
-                    self.pointer -= 1
-                return self.iterable[pointerStart:self.pointer + 1]
-            elif (self.pointer <= self.length):
+                    countClosingBraces += self.iterable.read(1) == b">"
+                poiterEnd = self.iterable.tell()
+                self.iterable.seek(pointerStart - poiterEnd, SEEK_CUR)
+                return self.iterable.read(poiterEnd-pointerStart)
+            elif (self.iterable.tell() <= self.length):
+                self.iterable.read(1)
+                nextbyte = self.peek(1)
                 continue
             else:
                 raise IndexError(f"{item} not found")
-        self.pointer -= 1
 
-        return self.iterable[pointerStart:self.pointer + 1]
+        poiterEnd = self.iterable.tell()
+        self.iterable.seek(pointerStart-poiterEnd,SEEK_CUR)
+        value = self.iterable.read(poiterEnd-pointerStart)
+        return  value
 
 
     def finishNumber(self):
-        rest = ""
+        rest = b""
         for char in iter(self):
-            if char in "<>\\/\n\t":
+            if char in b"<>\\/\n\t":
                 break
             rest+=char
         self.prev()
@@ -91,11 +100,8 @@ class ObjectIter:
         :param n: number of characters
         :return: Returns the next n chars without incrementing the counter
         """
-        try:
-            self.iterable[self.pointer+n+1]
-            out_string = self.iterable[self.pointer+1:self.pointer+n+1]
-        except IndexError:
-            #todo investigate bug
-            return self.iterable[self.pointer+1:self.pointer+n+1]
-
+        out_string = self.iterable.read(n)
+        if(self.iterable.tell()==self.length):
+            return out_string
+        self.iterable.seek(-n,SEEK_CUR)
         return out_string

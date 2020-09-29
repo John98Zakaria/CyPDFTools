@@ -13,7 +13,7 @@ class PDFStream:
         self.stream_dict = stream_dict
         self.object_number = object_number
         self.object_rev = object_rev
-        self.length = stream_dict["/Length"]
+        self.length = stream_dict[b"/Length"]
         self.startAddress = startAdress
 
         self.inuse = inuse

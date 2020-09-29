@@ -2,7 +2,7 @@ from utills import ObjectIter
 from PDFObjects import *
 from typing import Iterable, List
 
-SEPERATORS = "\\/[]<>() \t\n"
+SEPERATORS = b"\\/[]<>() \t\n"
 
 
 def extract_name(stream: ObjectIter) -> str:
@@ -11,7 +11,7 @@ def extract_name(stream: ObjectIter) -> str:
     :param stream:A stream whose forward slash / was just consumed
     :return: String containing the name
     """
-    out_string = "/"
+    out_string = b"/"
     for letter in stream:
         if (letter in SEPERATORS):
             stream.prev()  # Reverts a step back to where
@@ -27,10 +27,14 @@ def skip_space(stream: ObjectIter) -> str:
     :param stream: Any iterable object
     :return: First letter after the whitespace
     """
-    if (not stream.peek(1).isspace()):
+    peek = stream.peek(1)
+    if (not peek.isspace() or peek==b""):
         return ""
-    for _ in stream:
-        if (not stream.peek(1).isspace()):
+
+    for i in stream:
+
+        if (not i.isspace()):
+            stream.prev()
             return ""
 
 
@@ -40,15 +44,15 @@ def parse_string_literal(stream: ObjectIter) -> str:
     :param stream: A stream whose opening round bracket ( was just consumed
     :return: The string literal including the round brackets
     """
-    out_string = "("
+    out_string = b"("
     countOpeningBraces = 1
     countClosingBraces = 0
     for letter in stream:
         if countClosingBraces == countOpeningBraces:
             break
-        if letter == "(":
+        if letter == b"(":
             countOpeningBraces += 1
-        elif letter == ")":
+        elif letter == b")":
             countClosingBraces += 1
         out_string += letter
     stream.prev()
@@ -58,18 +62,18 @@ def parse_string_literal(stream: ObjectIter) -> str:
 def parse_numeric(init: str, stream: ObjectIter):
     number: str = init
     for char in stream:
-        if (char in "\\/[]<>()\t\n"):
+        if (char in b"\\/[]<>()\t\n"):
             stream.prev()
             break
-        elif (char == " "):
+        elif (char == b" "):
             upcomingchars = stream.peek(3)
-            isRef = upcomingchars == "0 R"
+            isRef = upcomingchars == b"0 R"
             if (isRef):
-                stream.pointer += 3
+                stream.move_poiter(3)
                 return IndirectObjectRef(number)
             else:
                 return number
-        elif (not char.isnumeric() and char != "."):
+        elif (not char.isdigit() and char != "."):
             number += stream.finishNumber()
             break
         number += char
@@ -79,31 +83,33 @@ def parse_numeric(init: str, stream: ObjectIter):
 def parse_stream(streamIter: ObjectIter, letter=None):
     if (letter is None):
         letter = next(streamIter)
-    if letter == "/":
+
+    debug = letter.decode("utf-8")
+    if letter == b"/":
         value = extract_name(streamIter)
 
-    elif letter == "[":
+    elif letter == b"[":
         value = extract_array(streamIter)
 
-    elif letter.isnumeric() or letter == "-":
+    elif letter.isdigit() or letter == b"-":
         value = parse_numeric(letter, streamIter)
 
-    elif letter == "<":
+    elif letter == b"<":
         letter = next(streamIter)
-        if letter == "<":
+        if letter == b"<":
             value = parse_dictionary(streamIter)
         else:
-            value = "<" + streamIter.moveto(">") + ">"
+            value = b"<" + letter +streamIter.moveto(b">") + b">"
             next(streamIter)
-    elif letter == "(":
+    elif letter == b"(":
         value = parse_string_literal(streamIter)
-    elif letter in "tf":  # handels true/false
-        value = streamIter.moveto("e") + next(streamIter)
-    elif letter == "n":  # handels null values
+    elif letter in b"tf":  # handels true/false
+        value = letter+streamIter.moveto(b"e") + next(streamIter)
+    elif letter == b"n":  # handels null values
         peek = streamIter.peek(3)
-        if (peek == "ull"):
-            value = "null"
-            streamIter.pointer += 3
+        if (peek == b"ull"):
+            value = b"null"
+            streamIter.move_poiter(3)
 
     skip_space(streamIter)
 
@@ -117,12 +123,12 @@ def parse_dictionary(pdf_stream):
     for letter in streamIter:
         # Parse Key
 
-        if letter == ">":
+        if letter == b">":
             letter = next(streamIter)
-            if (letter == ">"):
+            if (letter == b">"):
                 return PDFDict(object_dict)
 
-        elif letter != "/":
+        elif letter != b"/":
             raise AssertionError(f"Expected a forward slash / to build a dict key but got {letter}")
         key = extract_name(streamIter)
         skip_space(streamIter)
@@ -136,17 +142,16 @@ def parse_dictionary(pdf_stream):
 
 
 def extract_array(stream: Iterable) -> List[str]:
-    out_string = ""
+    out_string = b""
     for letter in stream:
-        if letter == "]":
+        if letter == b"]":
             break
         out_string += letter
 
     return PDFArray(parse_arrayObjects(out_string))
-    # return out_string.strip(" ").split(" ")
 
 
-def parse_arrayObjects(array_str: str):
+def parse_arrayObjects(array_str: bytes):
     stream_iter = ObjectIter(array_str)
     array = []
     for char in stream_iter:
@@ -174,7 +179,7 @@ if __name__ == '__main__':
     # t1 = (
     #     rf"""/Type/Page/BleedBox[ 0 0 504 661.5]/Contents 5 0 R/CropBox[ 0 0 504 661.5]/MediaBox[ 0 0 504 661.5]/Parent 3493 0 R/Resources<</Font<</F3 2186 0 R>>/ProcSet[/Text/ImageC]>>/Rotate 0/Trans<<>>>>""")
 
-    e2 = """<<
+    e2 = b"""<<
 /Limits [705 768]
 /Nums [705 3762 0 R 706 3763 0 R 707 3764 0 R 708 3765 0 R 709 3766 0 R
 710 3767 0 R 711 3768 0 R 712 3769 0 R 713 3770 0 R 714 3770 0 R
@@ -395,7 +400,7 @@ null]
 >>
 """
 
-    l1 = """/Type /Pages /Kids [
+    l1 = b"""/Type /Pages /Kids [
     4 0 R
     26 0 R
     40 0 R
@@ -431,22 +436,37 @@ null]
 
     # print(parse_dictionary(l1))
 
-    arr = "2 0 R 15 0 R 29 0 R"
-    # todo investigate bug
+
+    print(parse_arrayObjects(b' <D1314BD7F74849CDFA34B503910604A1>\n<D1314BD7F74849CDFA34B503910604A1> '))
+    # arr = b"2 0 R"
+    # # todo investigate bug
+    # it = ObjectIter(arr)
+    # next(it)
+    # next(it)
+    #
+    # print(it.peek(3))
+    # print(it.peek(3))
+    # print(it.peek(3))
+    # print(it.move_poiter(3))
+    # print(it.peek(2))
+    # print(it.peek(2))
+
+
+
     # print(parse_arrayObjects(arr))
 #
-#     t2 = """/R17
-#        17 0 R>>"""
+    t2 = b"""/R17
+       17 0 R>>"""
 #
-#     print(parse_dictionary(t2))
+    print(parse_dictionary(t2))
 #     print(parse_numeric("",ObjectIter("587.78")))
-#     t3 = """/BaseFont/FWRCSR+CMMIB10/FontDescriptor 34 0 R/Type/Font
-# /FirstChar 78/LastChar 121/Widths[ 950 0
-# 0 0 0 0 0 0 0 0 947 674 0 0 0 0 0 0
-# 0 0 0 0 0 0 0 544 0 0 0 0 0 0 0 0
-# 0 0 0 0 415 0 0 0 0 590]
-# /Encoding/WinAnsiEncoding/Subtype/Type1>>"""
-#     # print(parse_dictionary(t3))
+    t3 = b"""/BaseFont/FWRCSR+CMMIB10/FontDescriptor 34 0 R/Type/Font
+/FirstChar 78/LastChar 121/Widths[ 950 0
+0 0 0 0 0 0 0 0 947 674 0 0 0 0 0 0
+0 0 0 0 0 0 0 544 0 0 0 0 0 0 0 0
+0 0 0 0 415 0 0 0 0 590]
+/Encoding/WinAnsiEncoding/Subtype/Type1>>"""
+    print(parse_dictionary(t3))
 #
 #     t4 = """/Type/Encoding/BaseEncoding/WinAnsiEncoding/Differences[
 # 0/parenleftbig/parenrightbig

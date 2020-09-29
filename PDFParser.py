@@ -41,7 +41,7 @@ class PDFParser:
         self.file.seek(8, io.SEEK_CUR)
         trailerStart = self.file.tell()
         content = self.file.read(self.trailer_end - 10 - trailerStart)
-        trailer_dict = parse_stream(ObjectIter(content.decode("utf-8")))
+        trailer_dict = parse_stream(ObjectIter(content))
         return trailer_dict
 
     def seek_object(self, number: int) -> int:
@@ -83,7 +83,7 @@ class PDFParser:
         object_stream += current_line[:endIndex]
         assert object_stream[-6:] != bytes("endobj", "utf-8")
         assert object_stream[-7:] != bytes("stream\n", "utf-8")
-        thing = parse_stream(ObjectIter(object_stream.decode("utf-8")))
+        thing = parse_stream(ObjectIter(object_stream))
         if isStream+1:
             ob =  (PDFStream(thing,num,rev,self.file.tell(),inuse),num)
             if(type(ob[0].length)==IndirectObjectRef):
@@ -152,8 +152,8 @@ class PDFParser:
 if __name__ == '__main__':
 
 
-    pdf = PDFParser("test_pdfs/Learning Scala - Jason Swartz_125.pdf")
-    pdf.clone()
+    pdf = PDFParser("test_pdfs/MinimalPDf.pdf")
+    # pdf.clone()
     # pdf.trailer_parser()
     # pdf = PDFParser("out.pdf")
     # print(pdf.file.readline())
