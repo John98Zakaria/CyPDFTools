@@ -127,7 +127,7 @@ class PDFParser:
             f.write(newXrefTable.__str__().encode("utf-8"))
             f.write(b"trailer\n")
             # self.trailer.data.pop("/DocChecksum")
-            f.write(self.trailer.__str__().encode("utf-8")+b"\n")
+            f.write(self.trailer.to_bytes())
             f.write(f"startxref\n{xrefpos}\n%%EOF\n".encode("utf-8"))
 
 
@@ -151,9 +151,9 @@ class PDFParser:
 if __name__ == '__main__':
 
 
-    pdf = PDFParser("test_pdfs/MinimalPDf.pdf")
+    pdf = PDFParser("test_pdfs/220429a_Fehlerfortpflanzung.pdf")
     # pdf.extract_object(306)
-    pdf.clone()
+    # pdf.clone()
     # pdf.trailer_parser()
     # pdf = PDFParser("out.pdf")
     # print(pdf.file.readline())

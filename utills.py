@@ -117,15 +117,25 @@ class ObjectIter:
         return out_string
 
 
-class GeneralFunctions:
+class Ibytable:
+
+    def itemToByte(self,item) -> bytes:
+        try:
+            return bytes(item)
+        except Exception as E:
+            print(E)
+            return item.to_bytes()
+
+
     def to_bytes(self):
         raise NotImplemented
 
     def __eq__(self, other):
         raise NotImplemented
 
-    def offset_references(self):
+    def offset_references(self,offset:int):
         raise NotImplemented
 
     def __repr__(self):
         return self.__str__()
+
