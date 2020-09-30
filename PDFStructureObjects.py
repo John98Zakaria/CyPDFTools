@@ -2,7 +2,7 @@ from collections import namedtuple
 from dataclasses import dataclass
 from utills import Ibytable
 import io
-
+import re
 from tqdm import tqdm
 
 from PDFObjects import PDFDict
@@ -63,14 +63,12 @@ class XRefTable(Ibytable):
 
     @staticmethod
     def parse_table(table):
+        xref_regex = re.compile(b"(\d+) (\d+) (n|f)")
+
         def parse_entry(entry: bytes) -> tuple:
-            if (type(entry) == bytes):
-                entry = entry.decode("utf-8")
-            entry = entry.split(" ")[:3]
-            entry[0] = int(entry[0])
-            entry[1] = int(entry[1])
+            parsed_entry = xref_regex.search(entry)
             tup = namedtuple("XrefEntry", ["address", "revision", "in_use_entry"])
-            return tup(*entry)
+            return tup(int(parsed_entry.group(1)), int(parsed_entry.group(2)), str(parsed_entry.group(3),"utf-8"))
 
         i = 0
         for value in tqdm(table):

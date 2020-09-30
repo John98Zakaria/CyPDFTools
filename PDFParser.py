@@ -126,14 +126,14 @@ class PDFParser:
         return self.__str__()
 
     def clone(self):
-        newXrefTable = ["0 65535 f"]
+        newXrefTable = [b"0 65535 f"]
         with open("out.pdf","wb+")as f:
             f.write(b"%PDF-1.5\n")
             for object in tqdm(self.pdfObjects):
                 pos = str(f.tell())
                 rev = str(object[0].object_rev)
                 inuse = object[0].inuse
-                newXrefTable.append(f"{pos} {rev} {inuse}")
+                newXrefTable.append(f"{pos} {rev} {inuse}".encode("utf-8"))
                 f.write(object[0].to_bytes(pdf.file)+b"\n")
             xrefpos = f.tell()
             newXrefTable = XRefTable(xrefpos,newXrefTable)
@@ -164,14 +164,14 @@ class PDFParser:
 if __name__ == '__main__':
 
 
-    pdf = PDFParser("test_pdfs/02_VL_wahrnehmung_visuelles_System_ws2017_2018_02.pdf")
-    print(pdf.extract_object(1))
+    pdf = PDFParser("test_pdfs/PDF-Specifications.pdf")
+    print(pdf.extract_object(4191))
     # pdf.file.seek(2441891)
     # print(pdf.file.readline())
     # print(pdf.file.readline())
 
     # pdf.extract_object(306)
-    pdf.clone()
+    # pdf.clone()
     # pdf.trailer_parser()
     # pdf = PDFParser("out.pdf")
     # print(pdf.file.readline())
