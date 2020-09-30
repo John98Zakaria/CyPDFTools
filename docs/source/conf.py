@@ -26,9 +26,9 @@ author = 'John Sorial'
 # The full version, including alpha/beta/rc tags
 release = '0.0.1'
 
-# The master toctree document.
-source_suffix = '.rst'
-master_doc = 'index'
+# # The master toctree document.
+# source_suffix = '.rst'
+# master_doc = 'index'
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
