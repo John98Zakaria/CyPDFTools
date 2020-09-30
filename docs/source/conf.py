@@ -27,6 +27,7 @@ author = 'John Sorial'
 release = '0.0.1'
 
 # The master toctree document.
+source_suffix = '.rst'
 master_doc = 'index'
 # -- General configuration ---------------------------------------------------
 
