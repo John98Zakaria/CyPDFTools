@@ -55,6 +55,7 @@ def parse_string_literal(stream: ObjectIter) -> str:
         elif letter == b")":
             countClosingBraces += 1
         out_string += letter
+    stream.prev()
     return out_string
 
 
@@ -175,19 +176,21 @@ def parse_arrayObjects(array_str: bytes):
 
 if __name__ == '__main__':
     ##Bad table
-    t1 = b"""/Type/Annot/Border[ 0 0 0]/Dest[ 4863 0 R/XYZ 76.450073 383.27719 0]/F 4/Rect[ 167.25 565.5 447.75 582]/Subtype/Link>>"""
-    t1 = parse_dictionary(t1)
+    # t1 = b"""/Type/Annot/Border[ 0 0 0]/Dest[ 4863 0 R/XYZ 76.450073 383.27719 0]/F 4/Rect[ 167.25 565.5 447.75 582]/Subtype/Link>>"""
+    # t1 = parse_dictionary(t1)
+    #
+    # t2 = b"5 15"
+    # e2 = ObjectIter(t2)
+    #
+    # print(e2.peek(5))
+    # print(e2.peek(2))
+    # print(e2.peek(2))
+    #
+    # simple5 = b"[/Train (KEY) (Len(Pi))]"
+    # parse_stream(ObjectIter(simple5))
 
-    t2 = b"5 15"
-    e2 = ObjectIter(t2)
-
-    print(e2.peek(5))
-    print(e2.peek(2))
-    print(e2.peek(2))
-
-    simple5 = b"[/Train (KEY) (Len(Pi))]"
-    parse_stream(ObjectIter(simple5))
-
+    bad = b'<</Lang(DE-DE)/MarkInfo<</Marked true>>/Metadata 2 0 R/Outlines 12 0 R/OutputIntents 13 0 R/PageLayout/SinglePage/Pages 3 0 R/StructTreeRoot 14 0 R/Type/Catalog>>\rendobj\r2 0 obj\r<</Length 6657/Subtype/XML/Type/Metadata>>'
+    parse_stream(ObjectIter(bad))
     t5 = parse_stream(ObjectIter(b"[ 167.25 565.5 447.75 582]"))
     print(t5)
 

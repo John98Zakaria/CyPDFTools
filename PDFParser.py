@@ -24,13 +24,12 @@ class PDFParser:
             self.file.seek(-2, io.SEEK_CUR)
             char = self.file.read(1).decode("utf-8")
             count += char == "\n"
-        print(f"{self.file.tell()} In parse")
         self.trailer_end = self.file.tell()
-        xrefAddress = int(self.file.readline()[:-1])
+        raw = self.file.readline()[:-1]
+        xrefAddress = int(raw)
         self.file.seek(xrefAddress, io.SEEK_SET)  # Seek to xRefTable
         self.file.readline()
         entries = self.file.readline().decode("UTF-8").split(" ")[1]  # get number of xrefItems
-        print(entries)  # get number of xrefItems
         xrefLength = int(entries)
         xRefTable = self.file.readlines(xrefLength * 20 - 1)
         self.xRef = XRefTable(xrefAddress, xRefTable)
@@ -47,7 +46,22 @@ class PDFParser:
     def seek_object(self, number: int) -> int:
         address = self.xRef.table[number].address
         self.file.seek(address, io.SEEK_SET)
+        self._findObjectStart()
         return address
+
+
+    def _findObjectStart(self)->None:
+        """
+        Moves the pointer to the start of the object number
+        """
+        currentChar = self.file.read(1)
+        if(currentChar.isdigit()):
+            self.file.seek(-2,io.SEEK_CUR)
+            return
+        else:
+            while(not currentChar.isdigit()):
+                currentChar = self.file.read(1)
+            self.file.seek(-1,io.SEEK_CUR)
 
     def extract_object(self, number):
         self.seek_object(number)
@@ -55,12 +69,11 @@ class PDFParser:
         if(inuse=="f"):
             raise AssertionError("Free")
         current_char = self.file.read(1)
-        assert (current_char.isdigit())
         object_number = current_char
         while current_char != bytes("j", "utf-8"):
             current_char = self.file.read(1)
             object_number += current_char
-        numRev = re.match(br"(\d+) (\d+)", object_number)
+        numRev = re.search(br"(\d+) (\d+)", object_number)
         num,rev = numRev.group(1).decode("utf-8"),numRev.group(2).decode("utf-8")
         current_char = self.file.read(1)
         while current_char.isspace():
@@ -75,14 +88,14 @@ class PDFParser:
             current_line = self.file.readline()
 
 
-        isStream = current_line.find(bytes("stream", "utf-8"))
-        endIndex = isStream if isStream+1 \
-            else current_line.find(bytes("endobj", "utf-8"))
+        is_obj = current_line.find(bytes("endobj", "utf-8"))
+        endIndex = is_obj if is_obj+1 \
+            else current_line.find(bytes("stream", "utf-8"))
         object_stream += current_line[:endIndex]
         assert object_stream[-6:] != bytes("endobj", "utf-8")
         assert object_stream[-6:] != bytes("stream", "utf-8")
         thing = parse_stream(ObjectIter(object_stream))
-        if isStream+1:
+        if not (is_obj+1):
             ob =  (PDFStream(thing,num,rev,self.file.tell(),inuse),num)
             if(type(ob[0].length)==IndirectObjectRef):
                 l = self.extract_object(int(ob[0].length))[0].stream_dict
@@ -151,9 +164,14 @@ class PDFParser:
 if __name__ == '__main__':
 
 
-    pdf = PDFParser("test_pdfs/220429a_Fehlerfortpflanzung.pdf")
+    pdf = PDFParser("test_pdfs/02_VL_wahrnehmung_visuelles_System_ws2017_2018_02.pdf")
+    print(pdf.extract_object(1))
+    # pdf.file.seek(2441891)
+    # print(pdf.file.readline())
+    # print(pdf.file.readline())
+
     # pdf.extract_object(306)
-    # pdf.clone()
+    pdf.clone()
     # pdf.trailer_parser()
     # pdf = PDFParser("out.pdf")
     # print(pdf.file.readline())

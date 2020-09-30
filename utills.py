@@ -121,10 +121,10 @@ class Ibytable:
 
     def itemToByte(self,item) -> bytes:
         try:
-            return bytes(item)
-        except Exception as E:
-            print(E)
             return item.to_bytes()
+        except AttributeError as E:
+            # print(E)
+            return bytes(item)
 
 
     def to_bytes(self):
