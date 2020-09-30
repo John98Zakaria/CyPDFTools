@@ -55,7 +55,6 @@ def parse_string_literal(stream: ObjectIter) -> str:
         elif letter == b")":
             countClosingBraces += 1
         out_string += letter
-    stream.prev()
     return out_string
 
 
@@ -69,12 +68,12 @@ def parse_numeric(init: str, stream: ObjectIter):
             upcomingchars = stream.peek(3)
             isRef = upcomingchars == b"0 R"
             if (isRef):
-                stream.move_poiter(3)
+                stream.move_pointer(3)
                 return IndirectObjectRef(number)
             else:
                 return number
         elif (not char.isdigit() and char != b"."):
-            number += stream.finishNumber()
+            number += stream.finish_number()
             break
         number += char
     return number
@@ -99,7 +98,7 @@ def parse_stream(streamIter: ObjectIter, letter=None):
         if letter == b"<":
             value = parse_dictionary(streamIter)
         else:
-            value = b"<" + letter + streamIter.moveto(b">") + b">"
+            value = b"<" + letter + streamIter.move_to(b">") + b">"
             try:
                 next(streamIter)
             except StopIteration:
@@ -108,12 +107,12 @@ def parse_stream(streamIter: ObjectIter, letter=None):
     elif letter == b"(":
         value = parse_string_literal(streamIter)
     elif letter in b"tf":  # handels true/false
-        value = letter + streamIter.moveto(b"e") + next(streamIter)
+        value = letter + streamIter.move_to(b"e") + next(streamIter)
     elif letter == b"n":  # handels null values
         peek = streamIter.peek(3)
         if (peek == b"ull"):
             value = b"null"
-            streamIter.move_poiter(3)
+            streamIter.move_pointer(3)
 
     skip_space(streamIter)
 
@@ -123,7 +122,7 @@ def parse_stream(streamIter: ObjectIter, letter=None):
 def parse_dictionary(pdf_stream):
     object_dict = dict()
     streamIter = ObjectIter(pdf_stream) if type(pdf_stream) != ObjectIter else pdf_stream
-    streamIter.prepareDictParse()
+    streamIter._prepare_dictparse()
     for letter in streamIter:
         # Parse Key
 
@@ -185,6 +184,9 @@ if __name__ == '__main__':
     print(e2.peek(5))
     print(e2.peek(2))
     print(e2.peek(2))
+
+    simple5 = b"[/Train (KEY) (Len(Pi))]"
+    parse_stream(ObjectIter(simple5))
 
     t5 = parse_stream(ObjectIter(b"[ 167.25 565.5 447.75 582]"))
     print(t5)

@@ -1,7 +1,12 @@
 from dataclasses import dataclass
+from utills import GeneralFunctions
 
 
-class IndirectObjectRef:
+class IndirectObjectRef(GeneralFunctions):
+    """
+    Represents indirect object references
+    7.3.10 PDF 32000-1:2008
+    """
     def __init__(self, objectref):
         self.objectref = int(objectref)
 
@@ -17,41 +22,75 @@ class IndirectObjectRef:
     def __eq__(self, other):
         return self.objectref == other.objectref
 
-    def addOffset(self, offset):
+    def offset_references(self, offset:int)->None:
+        """
+        Increments the reference objects inside the data structure
+        :param offset: offset value
+        """
+        self.add_offset()
+
+    def add_offset(self, offset:int):
         self.objectref += offset
+
+    def to_bytes(self) -> bytes:
+        """
+        Converts Indirect Reference to bytes
+        :return: bytes representation of the indirect reference
+        """
+        return f"{self.objectref} 0 R".encode("utf-8")
 
 
 @dataclass
-class PDFArray:
+class PDFArray(GeneralFunctions):
+    """
+    A Wrapper for PDF Arrays
+    7.3.6 PDF 32000-1:2008
+    """
+
     def __init__(self, data: list):
         self.data = data
 
-    def increment_references(self, offset):
-        for index, value in enumerate(self.data):
-            if type(value) == IndirectObjectRef:
-                self.data[index] = value.addOffset(offset)
-
     def __str__(self):
         return "[" + " ".join(map(str, self.data)) + "]"
+
+    def __eq__(self, other):
+        return self.data == other.data
 
     def __repr__(self):
         return self.__str__()
 
 
+    def offset_references(self, offset:int):
+        """
+        Increments the reference objects inside the data structure
+        :param offset: offset value
+        """
+        for index, value in enumerate(self.data):
+            if type(value) == GeneralFunctions:
+                self.data[index] = value.offset_references(offset)
+
+
+
 @dataclass
-class PDFDict:
+class PDFDict(GeneralFunctions):
+    """
+    A wrapper for PDF Dictionaries
+    7.3.8 PDF 32000-1:2008
+    """
     def __init__(self, data: dict):
         self.data = data
 
-    def increment_references(self, offset):
+    def increment_references(self, offset:int)->None:
+        """
+        Increments the reference objects inside the data structure
+        :param offset: offset value
+        """
         for key, value in zip(self.data.keys(), self.data.values()):
-            if type(value) == IndirectObjectRef:
-                self.data[key] = value.addOffset(offset)
+            if type(value) == GeneralFunctions:
+                self.data[key] = value.offset_references(offset)
 
     def __getitem__(self, item):
         return self.data[item]
-
-
 
     def __str__(self):
         out_string = ""
@@ -59,6 +98,9 @@ class PDFDict:
             out_string += f"{key} {value}\n"
         out_string = "<<\n" + out_string + ">>"
         return out_string
+
+    def __eq__(self, other):
+        self.data = other.data
 
     def __repr__(self):
         return self.__str__()
