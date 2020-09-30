@@ -10,20 +10,13 @@ Another Simple header
 Mind Breaking stuff
 print("Hello Sphinx")
 
-.. automodule:: PDFObjects
-   :members:
-
-.. automodule:: utills
-   :members:
-
-.. automodule:: PDFParser
-   :members:
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    license
+   PDFObjects
 
 
 Indices and tables
