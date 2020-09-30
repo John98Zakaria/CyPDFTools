@@ -109,8 +109,9 @@ class ObjectIter:
         :param n: number of characters
         :return: Returns the next n chars without incrementing the counter
         """
+        prepeak = self.iterable.tell()
         out_string = self.iterable.read(n)
+        self.iterable.seek(prepeak)
         if(self.iterable.tell()==self.length):
             return out_string
-        self.iterable.seek(-n,SEEK_CUR)
         return out_string

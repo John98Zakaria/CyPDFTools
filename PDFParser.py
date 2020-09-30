@@ -137,8 +137,6 @@ class PDFParser:
 
         for objectIndex in tqdm(range(1, self.xRef.__len__())):
             try:
-                print(f"Now at {objectIndex}")
-
                 objects.append(self.extract_object(objectIndex))
             except  Exception as e:
                 print(f"{objectIndex} has {e}" )
@@ -155,7 +153,7 @@ if __name__ == '__main__':
 
     pdf = PDFParser("test_pdfs/MinimalPDf.pdf")
     # pdf.extract_object(306)
-    # pdf.clone()
+    pdf.clone()
     # pdf.trailer_parser()
     # pdf = PDFParser("out.pdf")
     # print(pdf.file.readline())

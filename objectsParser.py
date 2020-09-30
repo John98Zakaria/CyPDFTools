@@ -28,7 +28,7 @@ def skip_space(stream: ObjectIter) -> str:
     :return: First letter after the whitespace
     """
     peek = stream.peek(1)
-    if (not peek.isspace() or peek==b""):
+    if (not peek.isspace() or peek == b""):
         return ""
 
     for i in stream:
@@ -73,7 +73,7 @@ def parse_numeric(init: str, stream: ObjectIter):
                 return IndirectObjectRef(number)
             else:
                 return number
-        elif (not char.isdigit() and char != "."):
+        elif (not char.isdigit() and char != b"."):
             number += stream.finishNumber()
             break
         number += char
@@ -99,7 +99,7 @@ def parse_stream(streamIter: ObjectIter, letter=None):
         if letter == b"<":
             value = parse_dictionary(streamIter)
         else:
-            value = b"<" + letter +streamIter.moveto(b">") + b">"
+            value = b"<" + letter + streamIter.moveto(b">") + b">"
             try:
                 next(streamIter)
             except StopIteration:
@@ -108,7 +108,7 @@ def parse_stream(streamIter: ObjectIter, letter=None):
     elif letter == b"(":
         value = parse_string_literal(streamIter)
     elif letter in b"tf":  # handels true/false
-        value = letter+streamIter.moveto(b"e") + next(streamIter)
+        value = letter + streamIter.moveto(b"e") + next(streamIter)
     elif letter == b"n":  # handels null values
         peek = streamIter.peek(3)
         if (peek == b"ull"):
@@ -147,8 +147,15 @@ def parse_dictionary(pdf_stream):
 
 def extract_array(stream: Iterable) -> List[str]:
     out_string = b""
+    count_closingBraces = 0
+    count_openingBraces = 1
+
     for letter in stream:
         if letter == b"]":
+            count_closingBraces += 1
+        elif letter == b"[":
+            count_openingBraces += 1
+        if count_closingBraces==count_openingBraces:
             break
         out_string += letter
 
@@ -170,13 +177,26 @@ def parse_arrayObjects(array_str: bytes):
 if __name__ == '__main__':
     ##Bad table
     t1 = b"""/Type/Annot/Border[ 0 0 0]/Dest[ 4863 0 R/XYZ 76.450073 383.27719 0]/F 4/Rect[ 167.25 565.5 447.75 582]/Subtype/Link>>"""
-    parse_dictionary(t1)
+    t1 = parse_dictionary(t1)
+
+    t2 = b"5 15"
+    e2 = ObjectIter(t2)
+
+    print(e2.peek(5))
+    print(e2.peek(2))
+    print(e2.peek(2))
+
+    t5 = parse_stream(ObjectIter(b"[ 167.25 565.5 447.75 582]"))
+    print(t5)
+
+    t2 = parse_arrayObjects(t2)
 
     parse_arrayObjects(b'<F6BF5D976038EA4C968074C82AB159D8><3B6F6B904D0C5440BCE35DB1FD6F6BAF>')
 
     # print(parse_stream(ObjectIter(b'<</BaseFont/JIDMBG+MonotypeSorts/CIDSystemInfo 299 0 R/CIDToGIDMap/Identity/DW 1000/FontDescriptor 300 0 R/Subtype/CIDFontType2/Type/Font/W[81[761]]>>\r')))
 
     print(parse_dictionary(b"<<>>"))
+
     # print(parse_stream(ObjectIter(b'<</BitsPerComponent 8/ColorSpace 282 0 R/DecodeParms[<<>>]/Filter[/DCTDecode]/Height 187/Length 2912/Subtype/Image/Type/XObject/Width 187>>')))
     # t2 = """/Subtype/Image
     # /ColorSpace/DeviceGray
@@ -446,7 +466,6 @@ null]
 
     # print(parse_dictionary(l1))
 
-
     # print(parse_arrayObjects(b' <D1314BD7F74849CDFA34B503910604A1>\n<D1314BD7F74849CDFA34B503910604A1> '))
     # arr = b"2 0 R"
     # # todo investigate bug
@@ -461,15 +480,13 @@ null]
     # print(it.peek(2))
     # print(it.peek(2))
 
-
-
     # print(parse_arrayObjects(arr))
-#
+    #
     t2 = b"""/R17
        17 0 R>>"""
-#
+    #
     print(parse_dictionary(t2))
-#     print(parse_numeric("",ObjectIter("587.78")))
+    #     print(parse_numeric("",ObjectIter("587.78")))
     t3 = b"""/BaseFont/FWRCSR+CMMIB10/FontDescriptor 34 0 R/Type/Font
 /FirstChar 78/LastChar 121/Widths[ 950 0
 0 0 0 0 0 0 0 0 947 674 0 0 0 0 0 0
