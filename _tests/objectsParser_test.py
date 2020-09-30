@@ -28,8 +28,9 @@ class TestArray:
 
         assert parse_stream(ObjectIter(nested1)) == PDFArray(
             [PDFArray([b"1", b"2", b"3", PDFArray([b"4", b"5", b"6"])])])
-        assert parse_stream(ObjectIter(nested2)) == PDFArray([b"1", PDFArray([b"4",b"5",b"6"],b"5",b"6")])
-        assert parse_stream(ObjectIter(nested3)) == PDFArray([b"1",PDFArray([b"2",b"3"]),PDFArray([b"4",b"5",b"6"])])
+        assert parse_stream(ObjectIter(nested2)) == PDFArray([b"1", PDFArray([b"4", b"5", b"6"], b"5", b"8")])
+        assert parse_stream(ObjectIter(nested3)) == PDFArray(
+            [b"1", PDFArray([b"2", b"3"]), PDFArray([b"4", b"5", b"6"])])
         assert parse_stream(ObjectIter(nested4)) == PDFArray([b"484", b"9874", b"618", b"798"])
         assert parse_stream(ObjectIter(nested5)) == PDFArray([b"/Train", b"(KEY)", b"(Len(Pi))"])
 
