@@ -1,8 +1,7 @@
 from utillsCythonized cimport ObjectIter
-from utillsCythonized import ObjectIter
 from PDFObjects import *
 
-SEPERATORS = b"\\/[]<>() \t\n"
+cdef readonly bytes SEPERATORS = b"\\/[]<>() \t\n"
 
 
 cdef bytes extract_name(ObjectIter stream):
@@ -23,7 +22,7 @@ cdef bytes extract_name(ObjectIter stream):
     return out_bytes
 
 
-cpdef void skip_space(ObjectIter stream):
+cdef void skip_space(ObjectIter stream):
     """
     Moves stream to the next non whitespace char
     :param stream: Any iterable object
@@ -41,7 +40,7 @@ cpdef void skip_space(ObjectIter stream):
             return
 
 
-cpdef bytes parse_string_literal(ObjectIter stream) :
+cdef bytes parse_string_literal(ObjectIter stream) :
     """
     Parses string literals (7.3.4.2) PDF 32000-1:2008
     :param stream: A stream whose opening round bracket ( was just consumed
