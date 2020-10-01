@@ -1,4 +1,4 @@
-from utills import ObjectIter
+from utillsCythonized import ObjectIter
 from PDFObjects import *
 from typing import Iterable, List
 

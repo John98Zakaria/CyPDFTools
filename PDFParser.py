@@ -1,10 +1,10 @@
 from PDFObjects import IndirectObjectRef
 from PDFStructureObjects import *
 import re
-from objectsParser import parse_stream
-from utills import ObjectIter
+# from objectsParser import parse_stream
+from utillsCythonized import ObjectIter
+from objectsParserCythonized import parse_stream
 from tqdm import tqdm
-
 
 class PDFParser:
     def __init__(self, filePath):
@@ -154,8 +154,10 @@ class PDFParser:
 
 if __name__ == '__main__':
 
-
+    import time
+    start = time.time()
     pdf = PDFParser("test_pdfs/PDF-Specifications.pdf")
+
     # print(pdf.extract_object(4191))
     # pdf.file.seek(2441891)
     # print(pdf.file.readline())
@@ -163,6 +165,8 @@ if __name__ == '__main__':
 
     # pdf.extract_object(306)
     pdf.clone()
+
+    print(time.time()-start)
     # pdf.trailer_parser()
     # pdf = PDFParser("out.pdf")
     # print(pdf.file.readline())

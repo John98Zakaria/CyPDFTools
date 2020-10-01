@@ -28,7 +28,7 @@ class IndirectObjectRef(Ibytable):
         Increments the reference objects inside the data structure
         :param offset: offset value
         """
-        self.add_offset()
+        self.add_offset(offset)
 
     def add_offset(self, offset: int):
         self.objectref += offset
