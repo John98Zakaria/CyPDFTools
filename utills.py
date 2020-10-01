@@ -103,7 +103,7 @@ class ObjectIter:
         self.prev()  # Move back in order to preserve type token for next item
         return rest
 
-    def peek(self, n=1):
+    def peek(self, n:int=1):
         """
         Returns the next n chars without incrementing the counter
         :param n: number of characters
@@ -115,6 +115,14 @@ class ObjectIter:
         if (self.iterable.tell() == self.length):
             return out_string
         return out_string
+
+    def reversePeek(self,n:int=1)->bytes:
+        prepeak = self.iterable.tell()
+        self.iterable.seek(-n-1,SEEK_CUR)
+        out_string = self.iterable.read(n)
+        self.iterable.seek(prepeak)
+        return out_string
+
 
 
 class Ibytable:

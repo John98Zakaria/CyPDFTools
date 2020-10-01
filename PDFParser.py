@@ -105,15 +105,7 @@ class PDFParser:
         return (PDFObject(thing,num,rev,self.file.tell(),inuse),num)
 
 
-    @classmethod
-    def parse_xRefentry(cls, entry: bytes) -> tuple:
-        if type(entry) == bytes:
-            entry = entry.decode("utf-8")
-        entry = entry.split(" ")[:-1]
-        entry[0] = int(entry[0])
-        entry[1] = int(entry[1])
-        tup = namedtuple("XrefEntry", ["address", "revision", "in_use_entry"])
-        return tup(*entry)
+
 
     def close(self):
         self.file.close()
@@ -126,17 +118,17 @@ class PDFParser:
         return self.__str__()
 
     def clone(self):
-        newXrefTable = [b"0 65535 f"]
+        newXrefTable = [XrefEntry(0,65535,"f")]
         with open("out.pdf","wb+")as f:
             f.write(b"%PDF-1.5\n")
-            for object in tqdm(self.pdfObjects):
+            for object in tqdm(self.pdfObjects,"Writing Objects"):
                 pos = str(f.tell())
                 rev = str(object[0].object_rev)
                 inuse = object[0].inuse
-                newXrefTable.append(f"{pos} {rev} {inuse}".encode("utf-8"))
+                newXrefTable.append(XrefEntry(pos,int(rev),str(inuse)))
                 f.write(object[0].to_bytes(pdf.file)+b"\n")
             xrefpos = f.tell()
-            newXrefTable = XRefTable(xrefpos,newXrefTable)
+            newXrefTable = XRefTable(xrefpos,newXrefTable,True)
             f.write(newXrefTable.__str__().encode("utf-8"))
             f.write(b"trailer\n")
             # self.trailer.data.pop("/DocChecksum")
@@ -148,12 +140,11 @@ class PDFParser:
     def read_all_objects(self):
         objects = []
 
-        for objectIndex in tqdm(range(1, self.xRef.__len__())):
+        for objectIndex in tqdm(range(1, self.xRef.__len__()),"Reading Objects"):
             try:
                 objects.append(self.extract_object(objectIndex))
-            except  Exception as e:
-                print(f"{objectIndex} has {e}" )
-                continue
+            except Exception as e:
+                print(f"{objectIndex} has {e}")
 
         objects.sort(key=lambda x:int(x[1]))
         return objects
@@ -165,13 +156,13 @@ if __name__ == '__main__':
 
 
     pdf = PDFParser("test_pdfs/PDF-Specifications.pdf")
-    print(pdf.extract_object(4191))
+    # print(pdf.extract_object(4191))
     # pdf.file.seek(2441891)
     # print(pdf.file.readline())
     # print(pdf.file.readline())
 
     # pdf.extract_object(306)
-    # pdf.clone()
+    pdf.clone()
     # pdf.trailer_parser()
     # pdf = PDFParser("out.pdf")
     # print(pdf.file.readline())

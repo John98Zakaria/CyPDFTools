@@ -7,6 +7,8 @@ from tqdm import tqdm
 
 from PDFObjects import PDFDict
 
+XrefEntry = namedtuple("XrefEntry", ["address", "revision", "in_use_entry"])
+
 
 @dataclass
 class PDFStream(Ibytable):
@@ -57,9 +59,9 @@ class PDFObject(Ibytable):
 
 
 class XRefTable(Ibytable):
-    def __init__(self, xref_address: int, xref_table: list):
+    def __init__(self, xref_address: int, xref_table: list,parsed= False):
         self.address = xref_address
-        self.table = self.parse_table(xref_table)
+        self.table = self.parse_table(xref_table) if not parsed else xref_table
 
     @staticmethod
     def parse_table(table):
@@ -67,15 +69,16 @@ class XRefTable(Ibytable):
 
         def parse_entry(entry: bytes) -> tuple:
             parsed_entry = xref_regex.search(entry)
-            tup = namedtuple("XrefEntry", ["address", "revision", "in_use_entry"])
-            return tup(int(parsed_entry.group(1)), int(parsed_entry.group(2)), str(parsed_entry.group(3),"utf-8"))
+            return XrefEntry(int(parsed_entry.group(1)), int(parsed_entry.group(2)), str(parsed_entry.group(3),"utf-8"))
 
         i = 0
-        for value in tqdm(table):
+        for value in tqdm(table,"Parsing Xref"):
             v = parse_entry(value)
             table[i] = v
             i += 1
         return table
+
+
 
     def __len__(self):
         return len(self.table)

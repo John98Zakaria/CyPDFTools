@@ -51,9 +51,9 @@ def parse_string_literal(stream: ObjectIter) -> str:
         if countClosingBraces == countOpeningBraces:
             break
         if letter == b"(":
-            countOpeningBraces += 1
+            countOpeningBraces +=  stream.reversePeek(1)!=b"\\"
         elif letter == b")":
-            countClosingBraces += 1
+            countClosingBraces += stream.reversePeek(1)!=b"\\"
         out_string += letter
     stream.prev()
     return out_string
@@ -191,10 +191,13 @@ if __name__ == '__main__':
 
     bad = b'<</Lang(DE-DE)/MarkInfo<</Marked true>>/Metadata 2 0 R/Outlines 12 0 R/OutputIntents 13 0 R/PageLayout/SinglePage/Pages 3 0 R/StructTreeRoot 14 0 R/Type/Catalog>>\rendobj\r2 0 obj\r<</Length 6657/Subtype/XML/Type/Metadata>>'
     parse_stream(ObjectIter(bad))
+    print(parse_stream(ObjectIter(bad)))
     t5 = parse_stream(ObjectIter(b"[ 167.25 565.5 447.75 582]"))
     print(t5)
 
-    t2 = parse_arrayObjects(t2)
+    bad2 = b'<<\n/ActualText <B2F91394>\n/C /SC.7.147528\n/K 144\n/Lang (\\)h)\n/P 79423 0 R\n/Pg 1400 0 R\n/S /Span\n>>\n'
+
+    print(parse_stream(ObjectIter(bad2)))
 
     parse_arrayObjects(b'<F6BF5D976038EA4C968074C82AB159D8><3B6F6B904D0C5440BCE35DB1FD6F6BAF>')
 
