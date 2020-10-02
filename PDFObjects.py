@@ -23,6 +23,8 @@ class IndirectObjectRef(Ibytable):
     def __eq__(self, other):
         return self.objectref == other.objectref
 
+
+
     def offset_references(self, offset: int) -> None:
         """
         Increments the reference objects inside the data structure
