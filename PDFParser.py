@@ -6,6 +6,7 @@ from utills import ObjectIter
 from tqdm import tqdm
 import pickle
 
+
 class PDFParser:
     def __init__(self, filePath):
         self.file = open(filePath, "rb")
@@ -13,11 +14,11 @@ class PDFParser:
         self.trailer_end = 0
         self.trailerStart = 0
         self.xRefAddress = self._extractXrefAddress()
-        self.xRef = []
+        self.xRef = None
         self.xRefExtractor(self.xRefAddress)
         self.trailer = self.trailer_parser()
         self.pdfObjects = self.read_all_objects()
-
+        self.offset = 0
 
     def _extractXrefAddress(self):
         self.file.seek(-5, io.SEEK_END)
@@ -33,24 +34,30 @@ class PDFParser:
 
     def xRefExtractor(self, xrefAddress):
         len_re = re.compile(b"(\d+) (\d+)")
-        self.file.seek(xrefAddress, io.SEEK_SET)  # Seek to xRefTable
+        self.file.seek(xrefAddress, io.SEEK_SET)  # Seek to x_ref_table
         self.file.readline()
-        entries = len_re.search(self.file.readline()) # get number of xrefItems
-        xRefTable = []
+        entries = len_re.search(self.file.readline())  # get number of xrefItems
+        x_ref_table = []
         while entries:
             xrefLength = int(entries.group(2))
-            xRefTable += self.file.readlines(xrefLength * 20 - 1)
+            x_ref_table += self.file.readlines(xrefLength * 20 - 1)
             entries = len_re.search(self.file.readline())  # get number of xrefItems
 
-        self.xRef = XRefTable(xRefTable)
+        if self.xRef is not None:
+            self.xRef + XRefTable(x_ref_table)
+            return
+        self.xRef = XRefTable(x_ref_table)
         self.trailerStart = self.file.tell()
-
 
     def trailer_parser(self):
 
         self.trailerStart = self.file.tell()
         content = self.file.read(self.trailer_end - 10 - self.trailerStart)
         trailer_dict = parse_stream(ObjectIter(content))
+        if (b"/Prev" in trailer_dict):
+            prevXref = int(trailer_dict[b"/Prev"])
+            self.xRefExtractor(prevXref)
+
         return trailer_dict
 
     def seek_object(self, number: int) -> int:
@@ -92,7 +99,7 @@ class PDFParser:
         object_stream = b""
         while True:
             if bytes("endobj", "utf-8") in current_line or bytes("stream\n", "utf-8") in current_line \
-                    or bytes("stream\r","utf-8") in current_line:
+                    or bytes("stream\r", "utf-8") in current_line:
                 break
             object_stream += current_line
             current_line = self.file.readline()
@@ -103,13 +110,22 @@ class PDFParser:
         object_stream += current_line[:endIndex]
         thing = parse_stream(ObjectIter(object_stream))
         if not (is_obj + 1):
-            ob = (PDFStream(thing, num, rev, self.file.tell(), inuse), num)
-            if (type(ob[0].length) == IndirectObjectRef):
-                l = self.extract_object(int(ob[0].length))[0].stream_dict
-                ob[0].length = int(l)
+            ob = PDFStream(thing, num, rev, self.file.tell(), inuse)
+            if (type(ob.length) == IndirectObjectRef):
+                stream_length = self.extract_object(int(ob.length)).stream_dict
+                ob.length = int(stream_length)
             return ob
 
-        return (PDFObject(thing, num, rev, self.file.tell(), inuse), num)
+        return PDFObject(thing, num, rev, self.file.tell(), inuse)
+
+
+    def get_page_root(self):
+        document_calatog_address = self.trailer[b"/Root"].objectref -1
+        document_calatog = self.pdfObjects[document_calatog_address-self.offset]
+        page_root_address = document_calatog[b"/Pages"].objectref-1
+        page_root = self.pdfObjects[page_root_address-self.offset]
+        return (page_root,page_root_address)
+
 
     def close(self):
         self.file.close()
@@ -118,6 +134,9 @@ class PDFParser:
         return f"FilePath : {self.filePath}\n" \
                f"{self.xRef}"
 
+
+    def __len__(self):
+        return len(self.xRef)
     def __repr__(self):
         return self.__str__()
 
@@ -127,10 +146,10 @@ class PDFParser:
             f.write(b"%PDF-1.5\n")
             for object in tqdm(self.pdfObjects, "Writing Objects"):
                 pos = str(f.tell())
-                rev = str(object[0].object_rev)
-                inuse = object[0].inuse
+                rev = str(object.object_rev)
+                inuse = object.inuse
                 newXrefTable.append(XrefEntry(pos, int(rev), str(inuse)))
-                f.write(object[0].to_bytes(pdf.file) + b"\n")
+                f.write(object.to_bytes(pdf.file) + b"\n")
             xrefpos = f.tell()
             newXrefTable = XRefTable(newXrefTable, True)
             f.write(newXrefTable.__str__().encode("utf-8"))
@@ -148,22 +167,29 @@ class PDFParser:
             except Exception as e:
                 print(f"{objectIndex} has {e}")
 
-        objects.sort(key=lambda x: int(x[1]))
+        objects.sort(key=lambda x: x.object_number)
         return objects
+
+    def increment_refrences(self, n: int):
+        for object in tqdm(self.pdfObjects, "Incrementing Refrences"):
+            object.offset_references(n)
+        self.trailer.offset_references(n)
+        self.offset +=n
 
 
 if __name__ == '__main__':
-    pdf = PDFParser("test_pdfs/PDF-Specifications.pdf")
+    pdf = PDFParser("test_pdfs/Huffman.pdf")
+
     # pdf.file = ""
     # with open("SpecificationDump","rb") as f:
     #     # pickle.dump(pdf,f)
     #     pdf:PDFParser = pickle.load(f)
-
+    # pdf.increment_refrences(10)
+    # pdf.get_page_root()
     # pdf.file = open("test_pdfs/PDF-Specifications.pdf","rb")
     # pdf.extract_object(2)
 
     pdf.clone()
-
 
     # pdf.file.seek(2441891)
     # print(pdf.file.readline())

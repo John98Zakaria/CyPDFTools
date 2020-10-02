@@ -27,12 +27,13 @@ class IndirectObjectRef(Ibytable):
 
 
 
+
     def offset_references(self, offset: int) -> None:
         """
         Increments the reference objects inside the data structure
         :param offset: offset value
         """
-        self.add_offset()
+        self.add_offset(offset)
 
     def add_offset(self, offset: int):
         self.objectref += offset
@@ -64,14 +65,20 @@ class PDFArray(Ibytable):
     def __repr__(self):
         return self.__str__()
 
+    def __contains__(self, item):
+        return item in self.data
+
+    def __getitem__(self, item):
+        return self.data[item]
+
     def offset_references(self, offset: int):
         """
         Increments the reference objects inside the data structure
         :param offset: offset value
         """
         for index, value in enumerate(self.data):
-            if type(value) == Ibytable:
-                self.data[index] = value.offset_references(offset)
+            if issubclass(type(value),Ibytable):
+                value.offset_references(offset)
 
     def to_bytes(self)->bytes:
         bytes_representation = b"["
@@ -91,17 +98,23 @@ class PDFDict(Ibytable):
     def __init__(self, data: dict):
         self.data = data
 
-    def increment_references(self, offset: int) -> None:
+    def offset_references(self, offset: int) -> None:
         """
         Increments the reference objects inside the data structure
         :param offset: offset value
         """
         for key, value in zip(self.data.keys(), self.data.values()):
-            if type(value) == Ibytable:
-                self.data[key] = value.offset_references(offset)
+            if issubclass(type(value),Ibytable):
+                value.offset_references(offset)
+
+    def __contains__(self, item):
+        return item in self.data
 
     def __getitem__(self, item):
         return self.data[item]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
 
     def __str__(self):
 
