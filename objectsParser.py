@@ -1,6 +1,7 @@
 from utills import ObjectIter
 from PDFObjects import *
-from typing import Iterable, List
+from typing import Iterable
+import re
 
 SEPERATORS = b"\\/[]<>() \t\n"
 
@@ -66,10 +67,10 @@ def parse_numeric(init: str, stream: ObjectIter):
             break
         elif (char == b" "):
             upcomingchars = stream.peek(3)
-            isRef = upcomingchars == b"0 R"
+            isRef = re.search(b"(\d+) R",upcomingchars)
             if (isRef):
-                stream.move_pointer(3)
-                return IndirectObjectRef(number)
+                stream.move_pointer(len(isRef.group(1))+2)
+                return IndirectObjectRef(number,isRef.group(1))
             else:
                 return number
         elif (not char.isdigit() and char != b"."):

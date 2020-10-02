@@ -4,19 +4,22 @@ import re
 from objectsParser import parse_stream
 from utills import ObjectIter
 from tqdm import tqdm
-
+import pickle
 
 class PDFParser:
     def __init__(self, filePath):
         self.file = open(filePath, "rb")
         self.filePath = filePath
-        self.xRef = []
         self.trailer_end = 0
-        self.xRefParser()
+        self.trailerStart = 0
+        self.xRefAddress = self._extractXrefAddress()
+        self.xRef = []
+        self.xRefExtractor(self.xRefAddress)
         self.trailer = self.trailer_parser()
         self.pdfObjects = self.read_all_objects()
 
-    def xRefParser(self):
+
+    def _extractXrefAddress(self):
         self.file.seek(-5, io.SEEK_END)
         count = 0
         while count != 2:
@@ -26,20 +29,27 @@ class PDFParser:
         self.trailer_end = self.file.tell()
         raw = self.file.readline()[:-1]
         xrefAddress = int(raw)
+        return xrefAddress
+
+    def xRefExtractor(self, xrefAddress):
+        len_re = re.compile(b"(\d+) (\d+)")
         self.file.seek(xrefAddress, io.SEEK_SET)  # Seek to xRefTable
         self.file.readline()
-        entries = self.file.readline().decode("UTF-8").split(" ")[1]  # get number of xrefItems
-        xrefLength = int(entries)
-        xRefTable = self.file.readlines(xrefLength * 20 - 1)  # Todo Support XrefSectioning
+        entries = len_re.search(self.file.readline()) # get number of xrefItems
+        xRefTable = []
+        while entries:
+            xrefLength = int(entries.group(2))
+            xRefTable += self.file.readlines(xrefLength * 20 - 1)
+            entries = len_re.search(self.file.readline())  # get number of xrefItems
 
-        self.xRef = XRefTable(xrefAddress, xRefTable)
+        self.xRef = XRefTable(xRefTable)
+        self.trailerStart = self.file.tell()
+
 
     def trailer_parser(self):
-        self.file.seek(self.xRef.address)
-        self.file.readlines(len(self.xRef.table) * 20)
-        self.file.seek(8, io.SEEK_CUR)
-        trailerStart = self.file.tell()
-        content = self.file.read(self.trailer_end - 10 - trailerStart)
+
+        self.trailerStart = self.file.tell()
+        content = self.file.read(self.trailer_end - 10 - self.trailerStart)
         trailer_dict = parse_stream(ObjectIter(content))
         return trailer_dict
 
@@ -81,7 +91,8 @@ class PDFParser:
         current_line = self.file.readline()
         object_stream = b""
         while True:
-            if bytes("endobj", "utf-8") in current_line or bytes("stream\n", "utf-8") in current_line:
+            if bytes("endobj", "utf-8") in current_line or bytes("stream\n", "utf-8") in current_line \
+                    or bytes("stream\r","utf-8") in current_line:
                 break
             object_stream += current_line
             current_line = self.file.readline()
@@ -90,8 +101,6 @@ class PDFParser:
         endIndex = is_obj if is_obj + 1 \
             else current_line.find(bytes("stream", "utf-8"))
         object_stream += current_line[:endIndex]
-        assert object_stream[-6:] != bytes("endobj", "utf-8")
-        assert object_stream[-7:] != bytes("stream\n", "utf-8")
         thing = parse_stream(ObjectIter(object_stream))
         if not (is_obj + 1):
             ob = (PDFStream(thing, num, rev, self.file.tell(), inuse), num)
@@ -123,7 +132,7 @@ class PDFParser:
                 newXrefTable.append(XrefEntry(pos, int(rev), str(inuse)))
                 f.write(object[0].to_bytes(pdf.file) + b"\n")
             xrefpos = f.tell()
-            newXrefTable = XRefTable(xrefpos, newXrefTable, True)
+            newXrefTable = XRefTable(newXrefTable, True)
             f.write(newXrefTable.__str__().encode("utf-8"))
             f.write(b"trailer\n")
             # self.trailer.data.pop("/DocChecksum")
@@ -144,14 +153,24 @@ class PDFParser:
 
 
 if __name__ == '__main__':
-    pdf = PDFParser("test_pdfs/Learning Scala - Jason Swartz_125.pdf")
-    print(pdf.extract_object(2217))
+    pdf = PDFParser("test_pdfs/PDF-Specifications.pdf")
+    # pdf.file = ""
+    # with open("SpecificationDump","rb") as f:
+    #     # pickle.dump(pdf,f)
+    #     pdf:PDFParser = pickle.load(f)
+
+    # pdf.file = open("test_pdfs/PDF-Specifications.pdf","rb")
+    # pdf.extract_object(2)
+
+    pdf.clone()
+
+
     # pdf.file.seek(2441891)
     # print(pdf.file.readline())
     # print(pdf.file.readline())
 
     # pdf.extract_object(306)
-    pdf.clone()
+    # pdf.clone()
     # pdf.trailer_parser()
     # pdf = PDFParser("out.pdf")
     # print(pdf.file.readline())

@@ -19,7 +19,6 @@ class TestArray:
         assert parse_stream(ObjectIter(simple6)) == PDFArray([b"null", b"false", b"true"])
 
     def test_nested(self):
-        pytest.skip()
         nested1 = b"[1 2 3 [4 5 6]]"
         nested2 = b"[1 [4 5 6] 5 8]"
         nested3 = b"[1 [2 3] [4 5 6]]"
@@ -27,19 +26,24 @@ class TestArray:
         nested5 = b"[1 20 318 [4 [-5.497] 6]]"
 
         assert parse_stream(ObjectIter(nested1)) == PDFArray(
-            [PDFArray([b"1", b"2", b"3", PDFArray([b"4", b"5", b"6"])])])
-        assert parse_stream(ObjectIter(nested2)) == PDFArray([b"1", PDFArray([b"4", b"5", b"6"], b"5", b"8")])
+            [b'1', b'2', b'3', PDFArray( [b'4', b'5', b'6'])])
+        assert parse_stream(ObjectIter(nested2)) == PDFArray([b"1", PDFArray([b"4", b"5", b"6"]),b"5", b"8"])
         assert parse_stream(ObjectIter(nested3)) == PDFArray(
             [b"1", PDFArray([b"2", b"3"]), PDFArray([b"4", b"5", b"6"])])
-        assert parse_stream(ObjectIter(nested4)) == PDFArray([b"484", b"9874", b"618", b"798"])
-        assert parse_stream(ObjectIter(nested5)) == PDFArray([b"/Train", b"(KEY)", b"(Len(Pi))"])
+        assert parse_stream(ObjectIter(nested4)) == PDFArray([b"1", b"2", b"3" ,PDFArray([b"4", PDFArray([b"5"]),b"6"])])
+        assert parse_stream(ObjectIter(nested5)) == PDFArray([b'1', b'20', b'318', PDFArray([b'4', PDFArray([b'-5.497']), b'6'])])
 
     def test_empty(self):
-        pytest.skip()
-        empty1 = "[]"
-        empty2 = "[[]]"
-        empty3 = "[[[]]]"
-        empty4 = "[[] [] [[]]]"
+        empty1 = b"[]"
+        empty2 = b"[[]]"
+        empty3 = b"[[[]]]"
+        empty4 = b"[[] [] [[]]]"
+
+        assert parse_stream(ObjectIter(empty1))==PDFArray([])
+        assert parse_stream(ObjectIter(empty2))==PDFArray([PDFArray([])])
+        assert parse_stream(ObjectIter(empty3))==PDFArray([PDFArray([PDFArray([])])])
+        assert parse_stream(ObjectIter(empty4))==PDFArray([PDFArray([]),PDFArray([]),PDFArray([PDFArray([])])])
+
 
 
 class TestNumeric:

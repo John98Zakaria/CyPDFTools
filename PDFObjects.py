@@ -8,11 +8,13 @@ class IndirectObjectRef(Ibytable):
     7.3.10 PDF 32000-1:2008
     """
 
-    def __init__(self, objectref):
+    def __init__(self, objectref ,generationNum):
         self.objectref = int(objectref)
+        self.generationNum = int(generationNum)
+
 
     def __str__(self):
-        return f"{self.objectref} 0 R"
+        return f"{self.objectref} {self.generationNum} R"
 
     def __repr__(self):
         return self.__str__()
@@ -40,7 +42,7 @@ class IndirectObjectRef(Ibytable):
         Converts Indirect Reference to bytes
         :return: bytes representation of the indirect reference
         """
-        return f"{self.objectref} 0 R".encode("utf-8")
+        return self.__str__().encode("utf-8")
 
 
 @dataclass
@@ -54,7 +56,7 @@ class PDFArray(Ibytable):
         self.data = data
 
     def __str__(self):
-        return "[" + " ".join(map(str, self.data)) + "]"
+        return "[" + ",".join(map(str, self.data)) + "]"
 
     def __eq__(self, other):
         return self.data == other.data
@@ -102,11 +104,8 @@ class PDFDict(Ibytable):
         return self.data[item]
 
     def __str__(self):
-        out_string = ""
-        for key, value in zip(self.data.keys(), self.data.values()):
-            out_string += f"{key} {value}\n"
-        out_string = "<<\n" + out_string + ">>"
-        return out_string
+
+        return str(self.data)
 
     def __eq__(self, other):
         self.data = other.data

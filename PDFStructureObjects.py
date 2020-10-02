@@ -59,8 +59,7 @@ class PDFObject(Ibytable):
 
 
 class XRefTable(Ibytable):
-    def __init__(self, xref_address: int, xref_table: list,parsed= False):
-        self.address = xref_address
+    def __init__(self, xref_table: list,parsed= False):
         self.table = self.parse_table(xref_table) if not parsed else xref_table
 
     @staticmethod
