@@ -5,16 +5,16 @@ from io import BytesIO, SEEK_CUR, SEEK_SET, SEEK_END
 
 class ObjectIter:
 
-    def __init__(self, iterable: bytes, pointer=0):
+    def __init__(self, stream: bytes, pointer=0):
         """
-        :param iterable: Any object that supports __getitem__ ([index] operator)
+        :param stream: Any object that `BytesIO <https://docs.python.org/3/library/io.html#io.BytesIO>` supports
         :param pointer: A pointer to the start index
         """
-        self.iterable = BytesIO(iterable)
-        self.iterable.seek(pointer)
-        self.length = self.iterable.seek(0, SEEK_END)
-        self.deb = iterable
-        self.iterable.seek(0)
+        self.stream = BytesIO(stream)
+        self.stream.seek(pointer)
+        self.length = self.stream.seek(0, SEEK_END)
+        self.deb = stream
+        self.stream.seek(0)
         self._clean()
 
     def _clean(self):
@@ -22,7 +22,7 @@ class ObjectIter:
         Increments the iterable to the next non space character
         """
         while self.peek(1).isspace():
-            self.iterable.seek(1, SEEK_CUR)
+            self.stream.seek(1, SEEK_CUR)
 
     def _prepare_dictparse(self) -> None:
         """
@@ -37,7 +37,7 @@ class ObjectIter:
         return self
 
     def __next__(self):
-        byte = self.iterable.read(1)
+        byte = self.stream.read(1)
         if (byte == b""):
             raise StopIteration
         return byte
@@ -46,49 +46,69 @@ class ObjectIter:
         """
         Decrements the counter
         :return: Previous element
+
         """
-        self.iterable.seek(-2, SEEK_CUR)
-        return self.iterable.read(1)
+        self.stream.seek(-2, SEEK_CUR)
+        return self.stream.read(1)
 
-    def move_pointer(self, n):
-        self.iterable.seek(n, SEEK_CUR)
+    def move_pointer(self, n:int)->None:
+        """
+        Moves the pointer n characters
+        :param n: Number of characters
+        """
+        self.stream.seek(n, SEEK_CUR)
 
-    def move_to(self, item):
+    def move_to(self, item:bytes):
         """
         Moves the iterator to given item
         :param item: item to move to
         :return: Items since the beginning of iteration till end
         """
-        pointerStart = self.iterable.tell()
+        pointerStart = self.stream.tell()
         nextbyte = self.peek(1)
         while nextbyte != item:
-            if self.iterable.tell() == self.length:
-                pointer = self.iterable.tell()
-                self.iterable.seek(-1, SEEK_CUR)
-                pointer = self.iterable.tell()
+            if self.stream.tell() == self.length:
+                pointer = self.stream.tell()
+                self.stream.seek(-1, SEEK_CUR)
+                pointer = self.stream.tell()
                 countClosingBraces = 0
-                curr = self.iterable.read(1)
-                pointer = self.iterable.tell()
+                curr = self.stream.read(1)
+                pointer = self.stream.tell()
                 while countClosingBraces != 2:
-                    pointer = self.iterable.tell()
+                    pointer = self.stream.tell()
                     countClosingBraces += curr == b">"
-                    self.iterable.seek(-2, SEEK_CUR)
-                    curr = self.iterable.read(1)
+                    self.stream.seek(-2, SEEK_CUR)
+                    curr = self.stream.read(1)
 
-                poiterEnd = self.iterable.tell()
-                self.iterable.seek(pointerStart - poiterEnd, SEEK_CUR)
-                return self.iterable.read(poiterEnd - pointerStart)
-            if self.iterable.tell() <= self.length:
-                self.iterable.read(1)
+                poiterEnd = self.stream.tell()
+                self.stream.seek(pointerStart - poiterEnd, SEEK_CUR)
+                return self.stream.read(poiterEnd - pointerStart)
+            if self.stream.tell() <= self.length:
+                self.stream.read(1)
                 nextbyte = self.peek(1)
                 continue
             else:
                 raise IndexError(f"{item} not found")
 
-        poiterEnd = self.iterable.tell()
-        self.iterable.seek(pointerStart - poiterEnd, SEEK_CUR)
-        value = self.iterable.read(poiterEnd - pointerStart)
+        poiterEnd = self.stream.tell()
+        self.stream.seek(pointerStart - poiterEnd, SEEK_CUR)
+        value = self.stream.read(poiterEnd - pointerStart)
         return value
+
+    def skip_space(self) -> None:
+        """
+        Moves stream to the next non whitespace char
+        :param stream: Any iterable object
+        """
+        peek = self.peek(1)
+        if not peek.isspace() or peek == b"":
+            return
+
+        for i in self:
+
+            if not i.isspace():
+                self.prev()
+                return
 
     def finish_number(self) -> bytes:
         """
@@ -109,18 +129,23 @@ class ObjectIter:
         :param n: number of characters
         :return: Returns the next n chars without incrementing the counter
         """
-        prepeak = self.iterable.tell()
-        out_string = self.iterable.read(n)
-        self.iterable.seek(prepeak)
-        if (self.iterable.tell() == self.length):
+        prepeak = self.stream.tell()
+        out_string = self.stream.read(n)
+        self.stream.seek(prepeak)
+        if (self.stream.tell() == self.length):
             return out_string
         return out_string
 
     def reversePeek(self,n:int=1)->bytes:
-        prepeak = self.iterable.tell()
-        self.iterable.seek(-n-1,SEEK_CUR)
-        out_string = self.iterable.read(n)
-        self.iterable.seek(prepeak)
+        """
+        Returns the previous n chars without incrementing the counter
+        :param n: number of characters
+        :return: Returns the next n chars without incrementing the counter
+        """
+        prepeak = self.stream.tell()
+        self.stream.seek(-n - 1, SEEK_CUR)
+        out_string = self.stream.read(n)
+        self.stream.seek(prepeak)
         return out_string
 
 

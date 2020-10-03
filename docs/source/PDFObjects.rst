@@ -1,4 +1,3 @@
-
 PDF Objects
 ===============
 .. automodule:: PDFObjects

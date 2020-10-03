@@ -17,6 +17,7 @@ print("Hello Sphinx")
 
    license
    PDFObjects
+   PDFObjectParser
 
 
 Indices and tables

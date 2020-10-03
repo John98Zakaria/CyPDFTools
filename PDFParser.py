@@ -1,7 +1,7 @@
 from PDFObjects import IndirectObjectRef
 from PDFStructureObjects import *
 import re
-from objectsParser import parse_stream
+from PDFObjectsParser import classify_steam
 from utills import ObjectIter
 from tqdm import tqdm
 import pickle
@@ -25,15 +25,21 @@ class PDFParser:
     def _extractXrefAddress(self):
         self.file.seek(-3, io.SEEK_END)
         count = 0
-
-        while count != 2:
+        letter = self.file.read(1)
+        while not letter.isdigit():#Looking for the first number in
             self.file.seek(-2, io.SEEK_CUR)
-            char = self.file.read(1).decode("utf-8")
-            count += char in "\r\n"
+            letter = self.file.read(1)
+
+        xrefAddress = b""
+        while True:
+            if not letter.isdigit():
+                break
+            xrefAddress +=letter
+            self.file.seek(-2, io.SEEK_CUR)
+            letter = self.file.read(1)
+
         self.trailer_end = self.file.tell()
-        line = self.file.readline()
-        raw = re.search(b"\d+",line).group(0)
-        xrefAddress = int(raw)
+        xrefAddress = int(xrefAddress[::-1])
         return xrefAddress
 
     def xRefExtractor(self, xrefAddress):
@@ -57,7 +63,7 @@ class PDFParser:
 
         self.trailerStart = self.file.tell()
         content = self.file.read(self.trailer_end - 10 - self.trailerStart)
-        trailer_dict = parse_stream(ObjectIter(content))
+        trailer_dict = classify_steam(ObjectIter(content))
         if (b"/Prev" in trailer_dict):
             prevXref = int(trailer_dict[b"/Prev"])
             self.xRefExtractor(prevXref)
@@ -113,7 +119,7 @@ class PDFParser:
         endIndex = is_obj if is_obj + 1 \
             else current_line.find(bytes("stream", "utf-8"))
         object_stream += current_line[:endIndex]
-        thing = parse_stream(ObjectIter(object_stream))
+        thing = classify_steam(ObjectIter(object_stream))
         if not (is_obj + 1):
             ob = PDFStream(thing, num, rev, self.file.tell(), inuse)
             if (type(ob.length) == IndirectObjectRef):
@@ -184,7 +190,8 @@ class PDFParser:
 
 
 if __name__ == '__main__':
-    pdf = PDFParser("test_pdfs/keyboard-shortcuts-linux.pdf")
+    pdf = PDFParser("test_pdfs/PDF-Specifications.pdf")
+    pdf.clone()
     # with open("test_pdfs/Python for Data Analysis, 2nd Edition.pdf","rb") as r:
     #     with open("Refrased.pdf","wb+") as w:
     #         file = r.read()

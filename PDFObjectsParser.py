@@ -59,7 +59,13 @@ def parse_string_literal(stream: ObjectIter) -> str:
     return out_string + b")"
 
 
-def parse_numeric(init: str, stream: ObjectIter):
+def parse_numeric(init: bytes, stream: ObjectIter):
+    """
+    Parses numeric objects
+    :param init: The char that :meth:`PDFObjectsParser.classify_steam` already consumed
+    :param stream: Object Stream
+    :return: A number or a reference object
+    """
     number: str = init
     for char in stream:
         if (char in b"\\/[]<>()\t\n"):
@@ -80,47 +86,58 @@ def parse_numeric(init: str, stream: ObjectIter):
     return number
 
 
-def parse_stream(streamIter: ObjectIter, letter=None):
+def classify_steam(stream_iter: ObjectIter, letter=None):
+    """
+    Classifies and parses the given stream
+    :param stream_iter: A stream whose 1st character indicates its type
+    :param letter: Passes the letter that was consumed elsewhere
+    :return: A PDF Object or a standard object
+    """
     if (letter is None):
-        letter = next(streamIter)
+        letter = next(stream_iter)
 
     debug = letter.decode("utf-8")
     if letter == b"/":
-        value = extract_name(streamIter)
+        value = extract_name(stream_iter)
 
     elif letter == b"[":
-        value = extract_array(streamIter)
+        value = extract_array(stream_iter)
 
     elif letter.isdigit() or letter == b"-":
-        value = parse_numeric(letter, streamIter)
+        value = parse_numeric(letter, stream_iter)
 
     elif letter == b"<":
-        letter = next(streamIter)
+        letter = next(stream_iter)
         if letter == b"<":
-            value = parse_dictionary(streamIter)
+            value = parse_dictionary(stream_iter)
         else:
-            value = b"<" + letter + streamIter.move_to(b">") + b">"
+            value = b"<" + letter + stream_iter.move_to(b">") + b">"
             try:
-                next(streamIter)
+                next(stream_iter)
             except StopIteration:
                 return value
 
     elif letter == b"(":
-        value = parse_string_literal(streamIter)
+        value = parse_string_literal(stream_iter)
     elif letter in b"tf":  # handels true/false
-        value = letter + streamIter.move_to(b"e") + next(streamIter)
+        value = letter + stream_iter.move_to(b"e") + next(stream_iter)
     elif letter == b"n":  # handels null values
-        peek = streamIter.peek(3)
-        if (peek == b"ull"):
+        peek = stream_iter.peek(3)
+        if peek == b"ull":
             value = b"null"
-            streamIter.move_pointer(3)
+            stream_iter.move_pointer(3)
 
-    skip_space(streamIter)
+    stream_iter.skip_space()
 
     return value
 
 
-def parse_dictionary(pdf_stream)->PDFDict:
+def parse_dictionary(pdf_stream:ObjectIter)->PDFDict:
+    """
+    Parses PDFDictionary objects
+    :param pdf_stream: Object Stream
+    :return: A PDFDict :class:`PDFObjects.PDFDict` object
+    """
     object_dict = dict()
     streamIter = ObjectIter(pdf_stream) if type(pdf_stream) != ObjectIter else pdf_stream
     streamIter._prepare_dictparse()
@@ -129,23 +146,28 @@ def parse_dictionary(pdf_stream)->PDFDict:
 
         if letter == b">":
             letter = next(streamIter)
-            if (letter == b">"):
+            if letter == b">":
                 return PDFDict(object_dict)
 
         elif letter != b"/":
             raise AssertionError(f"Expected a forward slash / to build a dict key but got {letter}")
         key = extract_name(streamIter)
-        skip_space(streamIter)
+        streamIter.skip_space()
         letter = next(streamIter)
         # parse value
-        value = parse_stream(streamIter, letter)
+        value = classify_steam(streamIter, letter)
 
         object_dict[key] = value
 
     return PDFDict(object_dict)
 
 
-def extract_array(stream: Iterable) -> PDFArray:
+def extract_array(stream: ObjectIter) -> PDFArray:
+    """
+    Extracts array from steam
+    :param stream: ObjectIter
+    :return:
+    """
     out_string = b""
     count_closingBraces = 0
     count_openingBraces = 1
@@ -168,7 +190,7 @@ def parse_arrayObjects(array_str: bytes):
     for char in stream_iter:
         if (char.isspace()):
             continue
-        item = parse_stream(stream_iter, char)
+        item = classify_steam(stream_iter, char)
         array.append(item)
 
     return array

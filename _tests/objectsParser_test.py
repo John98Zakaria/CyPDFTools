@@ -1,5 +1,5 @@
 import pytest
-from objectsParser import *
+from PDFObjectsParser import *
 
 
 class TestArray:
@@ -11,12 +11,12 @@ class TestArray:
         simple5 = b"[/Train (KEY) (Len(Pi))]"
         simple6 = b"[null false true]"
 
-        assert parse_stream(ObjectIter(simple1)) == PDFArray([b"1", b"2", b"3", b"4", b"5"])
-        assert parse_stream(ObjectIter(simple2)) == PDFArray([b"1", IndirectObjectRef(2)])
-        assert parse_stream(ObjectIter(simple3)) == PDFArray([IndirectObjectRef(15)])
-        assert parse_stream(ObjectIter(simple4)) == PDFArray([b"484", b"9874", b"618", b"798"])
-        assert parse_stream(ObjectIter(simple5)) == PDFArray([b"/Train", b"(KEY)", b"(Len(Pi))"])
-        assert parse_stream(ObjectIter(simple6)) == PDFArray([b"null", b"false", b"true"])
+        assert classify_steam(ObjectIter(simple1)) == PDFArray([b"1", b"2", b"3", b"4", b"5"])
+        assert classify_steam(ObjectIter(simple2)) == PDFArray([b"1", IndirectObjectRef(2,0)])
+        assert classify_steam(ObjectIter(simple3)) == PDFArray([IndirectObjectRef(15,0)])
+        assert classify_steam(ObjectIter(simple4)) == PDFArray([b"484", b"9874", b"618", b"798"])
+        assert classify_steam(ObjectIter(simple5)) == PDFArray([b"/Train", b"(KEY)", b"(Len(Pi))"])
+        assert classify_steam(ObjectIter(simple6)) == PDFArray([b"null", b"false", b"true"])
 
     def test_nested(self):
         nested1 = b"[1 2 3 [4 5 6]]"
@@ -25,13 +25,13 @@ class TestArray:
         nested4 = b"[1 2 3 [4 [5] 6]]"
         nested5 = b"[1 20 318 [4 [-5.497] 6]]"
 
-        assert parse_stream(ObjectIter(nested1)) == PDFArray(
+        assert classify_steam(ObjectIter(nested1)) == PDFArray(
             [b'1', b'2', b'3', PDFArray( [b'4', b'5', b'6'])])
-        assert parse_stream(ObjectIter(nested2)) == PDFArray([b"1", PDFArray([b"4", b"5", b"6"]),b"5", b"8"])
-        assert parse_stream(ObjectIter(nested3)) == PDFArray(
+        assert classify_steam(ObjectIter(nested2)) == PDFArray([b"1", PDFArray([b"4", b"5", b"6"]), b"5", b"8"])
+        assert classify_steam(ObjectIter(nested3)) == PDFArray(
             [b"1", PDFArray([b"2", b"3"]), PDFArray([b"4", b"5", b"6"])])
-        assert parse_stream(ObjectIter(nested4)) == PDFArray([b"1", b"2", b"3" ,PDFArray([b"4", PDFArray([b"5"]),b"6"])])
-        assert parse_stream(ObjectIter(nested5)) == PDFArray([b'1', b'20', b'318', PDFArray([b'4', PDFArray([b'-5.497']), b'6'])])
+        assert classify_steam(ObjectIter(nested4)) == PDFArray([b"1", b"2", b"3" , PDFArray([b"4", PDFArray([b"5"]), b"6"])])
+        assert classify_steam(ObjectIter(nested5)) == PDFArray([b'1', b'20', b'318', PDFArray([b'4', PDFArray([b'-5.497']), b'6'])])
 
     def test_empty(self):
         empty1 = b"[]"
@@ -39,10 +39,10 @@ class TestArray:
         empty3 = b"[[[]]]"
         empty4 = b"[[] [] [[]]]"
 
-        assert parse_stream(ObjectIter(empty1))==PDFArray([])
-        assert parse_stream(ObjectIter(empty2))==PDFArray([PDFArray([])])
-        assert parse_stream(ObjectIter(empty3))==PDFArray([PDFArray([PDFArray([])])])
-        assert parse_stream(ObjectIter(empty4))==PDFArray([PDFArray([]),PDFArray([]),PDFArray([PDFArray([])])])
+        assert classify_steam(ObjectIter(empty1)) == PDFArray([])
+        assert classify_steam(ObjectIter(empty2)) == PDFArray([PDFArray([])])
+        assert classify_steam(ObjectIter(empty3)) == PDFArray([PDFArray([PDFArray([])])])
+        assert classify_steam(ObjectIter(empty4)) == PDFArray([PDFArray([]), PDFArray([]), PDFArray([PDFArray([])])])
 
 
 
