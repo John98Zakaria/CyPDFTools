@@ -1,4 +1,4 @@
 PDFObjectsParser
-===============
+================
 .. automodule:: PDFObjectsParser
    :members:

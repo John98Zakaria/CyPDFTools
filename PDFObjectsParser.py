@@ -1,16 +1,17 @@
-from utills import ObjectIter
-from PDFObjects import *
-from typing import Iterable
 import re
+
+from PDFObjects import *
+from utils import ObjectIter
 
 SEPERATORS = b"\\/[]<>() \t\n"
 
 
-def extract_name(stream: ObjectIter) -> str:
+def extract_name(stream: ObjectIter) -> bytes:
     """
     Extracts the next name from the iterator (7.3.5 PDF 32000-1:2008)
-    :param stream:A stream whose forward slash / was just consumed
-    :return: String containing the name
+
+    :param stream: A stream whose forward slash / was just consumed
+    :return: Bytes containing the name
     """
     out_string = b"/"
     for letter in stream:
@@ -22,26 +23,10 @@ def extract_name(stream: ObjectIter) -> str:
     return out_string
 
 
-def skip_space(stream: ObjectIter) -> str:
-    """
-    Moves stream to the next non whitespace char
-    :param stream: Any iterable object
-    :return: First letter after the whitespace
-    """
-    peek = stream.peek(1)
-    if (not peek.isspace() or peek == b""):
-        return ""
-
-    for i in stream:
-
-        if (not i.isspace()):
-            stream.prev()
-            return ""
-
-
-def parse_string_literal(stream: ObjectIter) -> str:
+def parse_literalStrings(stream: ObjectIter) -> bytes:
     """
     Parses string literals (7.3.4.2) PDF 32000-1:2008
+
     :param stream: A stream whose opening round bracket ( was just consumed
     :return: The string literal including the round brackets
     """
@@ -49,10 +34,10 @@ def parse_string_literal(stream: ObjectIter) -> str:
     countOpeningBraces = 1
     countClosingBraces = 0
     for letter in stream:
-        if letter == b"(":
-            countOpeningBraces +=  stream.reversePeek(1)!=b"\\"
+        if letter == b"(":  # To support nested literals
+            countOpeningBraces += stream.reversePeek(1) != b"\\"  # Check whether escape symbol is present
         elif letter == b")":
-            countClosingBraces += stream.reversePeek(1)!=b"\\"
+            countClosingBraces += stream.reversePeek(1) != b"\\"  # Check whether escape symbol is present
             if countClosingBraces == countOpeningBraces:
                 break
         out_string += letter
@@ -62,24 +47,25 @@ def parse_string_literal(stream: ObjectIter) -> str:
 def parse_numeric(init: bytes, stream: ObjectIter):
     """
     Parses numeric objects
+
     :param init: The char that :meth:`PDFObjectsParser.classify_steam` already consumed
     :param stream: Object Stream
     :return: A number or a reference object
     """
     number: str = init
     for char in stream:
-        if (char in b"\\/[]<>()\t\n"):
+        if char in b"\\/[]<>()\t\n":  # found a terminating character
             stream.prev()
             break
-        elif (char == b" "):
+        elif char == b" ":  # found a space item maybe an indirect object reference
             upcomingchars = stream.peek(3)
-            isRef = re.search(b"(\d+) R",upcomingchars)
-            if (isRef):
-                stream.move_pointer(len(isRef.group(1))+2)
-                return IndirectObjectRef(number,isRef.group(1))
+            isReference = re.search(br"(\d+) R", upcomingchars)
+            if isReference:
+                stream.move_pointer(len(isReference.group(1)) + 2)
+                return IndirectObjectRef(number, isReference.group(1))
             else:
                 return number
-        elif (not char.isdigit() and char != b"."):
+        elif not char.isdigit() and char != b".":
             number += stream.finish_number()
             break
         number += char
@@ -89,11 +75,12 @@ def parse_numeric(init: bytes, stream: ObjectIter):
 def classify_steam(stream_iter: ObjectIter, letter=None):
     """
     Classifies and parses the given stream
+
     :param stream_iter: A stream whose 1st character indicates its type
     :param letter: Passes the letter that was consumed elsewhere
     :return: A PDF Object or a standard object
     """
-    if (letter is None):
+    if letter is None:
         letter = next(stream_iter)
 
     debug = letter.decode("utf-8")
@@ -118,7 +105,7 @@ def classify_steam(stream_iter: ObjectIter, letter=None):
                 return value
 
     elif letter == b"(":
-        value = parse_string_literal(stream_iter)
+        value = parse_literalStrings(stream_iter)
     elif letter in b"tf":  # handels true/false
         value = letter + stream_iter.move_to(b"e") + next(stream_iter)
     elif letter == b"n":  # handels null values
@@ -132,18 +119,17 @@ def classify_steam(stream_iter: ObjectIter, letter=None):
     return value
 
 
-def parse_dictionary(pdf_stream:ObjectIter)->PDFDict:
+def parse_dictionary(pdf_stream: ObjectIter) -> PDFDict:
     """
     Parses PDFDictionary objects
+
     :param pdf_stream: Object Stream
-    :return: A PDFDict :class:`PDFObjects.PDFDict` object
+    :return: :class:`PDFObjects.PDFDict` object
     """
     object_dict = dict()
     streamIter = ObjectIter(pdf_stream) if type(pdf_stream) != ObjectIter else pdf_stream
-    streamIter._prepare_dictparse()
+    streamIter.move_to(b"/")
     for letter in streamIter:
-        # Parse Key
-
         if letter == b">":
             letter = next(streamIter)
             if letter == b">":
@@ -151,6 +137,7 @@ def parse_dictionary(pdf_stream:ObjectIter)->PDFDict:
 
         elif letter != b"/":
             raise AssertionError(f"Expected a forward slash / to build a dict key but got {letter}")
+
         key = extract_name(streamIter)
         streamIter.skip_space()
         letter = next(streamIter)
@@ -165,8 +152,9 @@ def parse_dictionary(pdf_stream:ObjectIter)->PDFDict:
 def extract_array(stream: ObjectIter) -> PDFArray:
     """
     Extracts array from steam
+
     :param stream: ObjectIter
-    :return:
+    :return: PDFArray
     """
     out_string = b""
     count_closingBraces = 0
@@ -177,15 +165,21 @@ def extract_array(stream: ObjectIter) -> PDFArray:
             count_closingBraces += 1
         elif letter == b"[":
             count_openingBraces += 1
-        if count_closingBraces==count_openingBraces:
+        if count_closingBraces == count_openingBraces:
             break
         out_string += letter
 
     return PDFArray(parse_arrayObjects(out_string))
 
 
-def parse_arrayObjects(array_str: bytes):
-    stream_iter = ObjectIter(array_str)
+def parse_arrayObjects(array_bytes: bytes) -> list:
+    """
+    Parses the extracted array
+    
+    :param array_bytes:
+    :return: A python list with the parsed objects
+    """
+    stream_iter = ObjectIter(array_bytes)
     array = []
     for char in stream_iter:
         if (char.isspace()):

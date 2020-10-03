@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from utills import Ibytable
+
+from utils import Ibytable
 
 
 class IndirectObjectRef(Ibytable):
@@ -8,10 +9,9 @@ class IndirectObjectRef(Ibytable):
     7.3.10 PDF 32000-1:2008
     """
 
-    def __init__(self, objectref ,generationNum):
+    def __init__(self, objectref, generationNum):
         self.objectref = int(objectref)
         self.generationNum = int(generationNum)
-
 
     def __str__(self):
         return f"{self.objectref} {self.generationNum} R"
@@ -25,12 +25,10 @@ class IndirectObjectRef(Ibytable):
     def __eq__(self, other):
         return self.objectref == other.objectref
 
-
-
-
     def offset_references(self, offset: int) -> None:
         """
         Increments the reference objects inside the data structure
+
         :param offset: offset value
         """
         self.add_offset(offset)
@@ -41,6 +39,7 @@ class IndirectObjectRef(Ibytable):
     def to_bytes(self) -> bytes:
         """
         Converts Indirect Reference to bytes
+
         :return: bytes representation of the indirect reference
         """
         return self.__str__().encode("utf-8")
@@ -74,17 +73,23 @@ class PDFArray(Ibytable):
     def offset_references(self, offset: int):
         """
         Increments the reference objects inside the data structure
+
         :param offset: offset value
         """
         for index, value in enumerate(self.data):
-            if issubclass(type(value),Ibytable):
+            if issubclass(type(value), Ibytable):
                 value.offset_references(offset)
 
-    def to_bytes(self)->bytes:
+    def to_bytes(self) -> bytes:
+        """
+        Converts the object to bytes
+
+        :return: Bytes representation of the object
+        """
         bytes_representation = b"["
         for item in self.data:
-            bytes_representation+=self.itemToByte(item) + b" "
-        bytes_representation +=b"]"
+            bytes_representation += self.itemToByte(item) + b" "
+        bytes_representation += b"]"
         return bytes_representation
 
 
@@ -101,10 +106,11 @@ class PDFDict(Ibytable):
     def offset_references(self, offset: int) -> None:
         """
         Increments the reference objects inside the data structure
+
         :param offset: offset value
         """
         for key, value in zip(self.data.keys(), self.data.values()):
-            if issubclass(type(value),Ibytable):
+            if issubclass(type(value), Ibytable):
                 value.offset_references(offset)
 
     def __contains__(self, item):
@@ -126,7 +132,12 @@ class PDFDict(Ibytable):
     def __repr__(self):
         return self.__str__()
 
-    def to_bytes(self)->bytes:
+    def to_bytes(self) -> bytes:
+        """
+        Converts the object to bytes
+
+        :return: Bytes representation of the object
+        """
         out_string = b"<<\n"
         for key, value in zip(self.data.keys(), self.data.values()):
             if issubclass(type(value), Ibytable):

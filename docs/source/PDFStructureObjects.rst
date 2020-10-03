@@ -1,0 +1,4 @@
+PDFStructureObjects
+===================
+.. automodule:: PDFStructureObjects
+   :members:

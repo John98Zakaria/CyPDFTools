@@ -3,21 +3,19 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to MiniPDFMerger's documentation!
+Welcome to CyPDFTools' documentation!
 =========================================
-Another Simple header
-=====================
-Mind Breaking stuff
-print("Hello Sphinx")
-
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-   license
+
    PDFObjects
-   PDFObjectParser
+   PDFObjectsParser
+   PDFStructureObjects
+   utils
+   license
 
 
 Indices and tables
