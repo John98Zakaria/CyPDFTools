@@ -51,6 +51,7 @@ class PDFStream(Ibytable):
     def __setitem__(self, key, value):
         self.stream_dict[key] = value
 
+
 class PDFObject(Ibytable):
     def __init__(self, stream_dict, object_number, object_rev, startAdress, inuse):
         self.stream_dict = stream_dict

@@ -13,6 +13,8 @@ class PDFParser:
         self.filePath = filePath
         self.trailer_end = 0
         self.trailerStart = 0
+        self.skippedFree = 0
+
         self.xRefAddress = self._extractXrefAddress()
         self.xRef = None
         self.xRefExtractor(self.xRefAddress)
@@ -21,21 +23,23 @@ class PDFParser:
         self.offset = 0
 
     def _extractXrefAddress(self):
-        self.file.seek(-5, io.SEEK_END)
+        self.file.seek(-3, io.SEEK_END)
         count = 0
+
         while count != 2:
             self.file.seek(-2, io.SEEK_CUR)
             char = self.file.read(1).decode("utf-8")
-            count += char == "\n"
+            count += char in "\r\n"
         self.trailer_end = self.file.tell()
-        raw = self.file.readline()[:-1]
+        line = self.file.readline()
+        raw = re.search(b"\d+",line).group(0)
         xrefAddress = int(raw)
         return xrefAddress
 
     def xRefExtractor(self, xrefAddress):
         len_re = re.compile(b"(\d+) (\d+)")
         self.file.seek(xrefAddress, io.SEEK_SET)  # Seek to x_ref_table
-        self.file.readline()
+        debug = self.file.readline()
         entries = len_re.search(self.file.readline())  # get number of xrefItems
         x_ref_table = []
         while entries:
@@ -83,6 +87,7 @@ class PDFParser:
         self.seek_object(number)
         inuse = self.xRef.table[number].in_use_entry
         if (inuse == "f"):
+            self.skippedFree +=1
             raise AssertionError("Free")
         current_char = self.file.read(1)
         object_number = current_char
@@ -120,11 +125,11 @@ class PDFParser:
 
 
     def get_page_root(self):
-        document_calatog_address = self.trailer[b"/Root"].objectref -1
-        document_calatog = self.pdfObjects[document_calatog_address-self.offset]
-        page_root_address = document_calatog[b"/Pages"].objectref-1
-        page_root = self.pdfObjects[page_root_address-self.offset]
-        return (page_root,page_root_address)
+        document_calatog_address = self.trailer[b"/Root"].objectref -self.offset
+        document_calatog = self.pdfObjects[document_calatog_address]
+        page_root_address = document_calatog[b"/Pages"].objectref  -self.offset
+        page_root = self.pdfObjects[page_root_address]
+        return page_root
 
 
     def close(self):
@@ -144,12 +149,12 @@ class PDFParser:
         newXrefTable = [XrefEntry(0, 65535, "f")]
         with open("out.pdf", "wb+")as f:
             f.write(b"%PDF-1.5\n")
-            for object in tqdm(self.pdfObjects, "Writing Objects"):
+            for object in tqdm(self.pdfObjects.values(), "Writing Objects"):
                 pos = str(f.tell())
                 rev = str(object.object_rev)
                 inuse = object.inuse
                 newXrefTable.append(XrefEntry(pos, int(rev), str(inuse)))
-                f.write(object.to_bytes(pdf.file) + b"\n")
+                f.write(object.to_bytes(self.file) + b"\n")
             xrefpos = f.tell()
             newXrefTable = XRefTable(newXrefTable, True)
             f.write(newXrefTable.__str__().encode("utf-8"))
@@ -159,26 +164,32 @@ class PDFParser:
             f.write(f"startxref\n{xrefpos}\n%%EOF\n".encode("utf-8"))
 
     def read_all_objects(self):
-        objects = []
+        object_store = {}
 
         for objectIndex in tqdm(range(1, self.xRef.__len__()), "Reading Objects"):
             try:
-                objects.append(self.extract_object(objectIndex))
+                item = self.extract_object(objectIndex)
+                object_number = item.object_number
+                object_store[object_number] = item
             except Exception as e:
                 print(f"{objectIndex} has {e}")
 
-        objects.sort(key=lambda x: x.object_number)
-        return objects
+        return object_store
 
     def increment_refrences(self, n: int):
-        for object in tqdm(self.pdfObjects, "Incrementing Refrences"):
+        for object in tqdm(self.pdfObjects.values(), "Incrementing Refrences"):
             object.offset_references(n)
         self.trailer.offset_references(n)
         self.offset +=n
 
 
 if __name__ == '__main__':
-    pdf = PDFParser("test_pdfs/Huffman.pdf")
+    pdf = PDFParser("test_pdfs/keyboard-shortcuts-linux.pdf")
+    # with open("test_pdfs/Python for Data Analysis, 2nd Edition.pdf","rb") as r:
+    #     with open("Refrased.pdf","wb+") as w:
+    #         file = r.read()
+    #         file = file.replace(b"\r",b"\n")
+    #         w.write(file)
 
     # pdf.file = ""
     # with open("SpecificationDump","rb") as f:
@@ -189,7 +200,7 @@ if __name__ == '__main__':
     # pdf.file = open("test_pdfs/PDF-Specifications.pdf","rb")
     # pdf.extract_object(2)
 
-    pdf.clone()
+    # pdf.clone()
 
     # pdf.file.seek(2441891)
     # print(pdf.file.readline())

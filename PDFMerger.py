@@ -16,21 +16,22 @@ class PDFMerger:
 
     def merge(self):
         self.pdf2.increment_refrences(self.pdf1.__len__())
-        root1,address1 = self.pdf1.get_page_root()
-        root2,address2 = self.pdf2.get_page_root()
-        root2[b"/Parent"] = IndirectObjectRef(address1+1,0)
-        root1[b"/Kids"].data.append(IndirectObjectRef(address2+1,0))
+        root1 = self.pdf1.get_page_root()
+        root2 = self.pdf2.get_page_root()
+        root2[b"/Parent"] = IndirectObjectRef(root1.object_number,root1.object_rev)
+        root1[b"/Kids"].data.append(IndirectObjectRef(root2.object_number,root2.object_rev))
         root1[b"/Count"] = str(int(root1[b"/Count"])+int(root2[b"/Count"])).encode("utf-8")
+        self.pdf1.trailer[b"/Size"] = str(len(pdf1)+len(pdf2)).encode("utf-8")
         newXrefTable = [XrefEntry(0, 65535, "f")]
-        with open("Merge.pdf", "wb+")as f:
+        with open("Merge3.pdf", "wb+")as f:
             f.write(b"%PDF-1.5\n")
-            for object in tqdm(self.pdf1.pdfObjects, "Writing Objects"):
+            for object in tqdm(self.pdf1.pdfObjects.values(), "Writing Objects"):
                 pos = str(f.tell())
                 rev = str(object.object_rev)
                 inuse = object.inuse
                 newXrefTable.append(XrefEntry(pos, int(rev), str(inuse)))
                 f.write(object.to_bytes(self.pdf1.file) + b"\n")
-            for object in tqdm(self.pdf2.pdfObjects, "Writing Objects"):
+            for object in tqdm(self.pdf2.pdfObjects.values(), "Writing Objects"):
                 pos = str(f.tell())
                 rev = str(object.object_rev)
                 inuse = object.inuse
@@ -51,8 +52,8 @@ class PDFMerger:
 
 
 if __name__ == '__main__':
-    pdf1 = PDFParser("test_pdfs/Blatt03.pdf")
-    pdf2 = PDFParser("test_pdfs/PDF-Specifications.pdf")
-    merger = PDFMerger(pdf1,pdf2)
+    pdf1 = PDFParser("test_pdfs/LittleAspNetCoreBook.pdf")
+    pdf2 = PDFParser("test_pdfs/Blatt04.pdf")
+    merger = PDFMerger(pdf2,pdf1)
 
     merger.merge()
