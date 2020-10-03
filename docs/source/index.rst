@@ -8,8 +8,7 @@ Welcome to CyPDFTools' documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
-
+   :caption: Table of Contents
 
    PDFObjects
    PDFObjectsParser
