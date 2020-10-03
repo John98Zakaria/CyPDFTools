@@ -1,10 +1,12 @@
-from PDFObjects import IndirectObjectRef
-from PDFStructureObjects import *
+import io
 import re
-from PDFObjectsParser import classify_steam
-from utills import ObjectIter
+
 from tqdm import tqdm
-import pickle
+
+from PDFObjects import IndirectObjectRef
+from PDFObjectsParser import classify_steam
+from PDFStructureObjects import *
+from utils import ObjectIter
 
 
 class PDFParser:
@@ -24,9 +26,8 @@ class PDFParser:
 
     def _extractXrefAddress(self):
         self.file.seek(-3, io.SEEK_END)
-        count = 0
         letter = self.file.read(1)
-        while not letter.isdigit():#Looking for the first number in
+        while not letter.isdigit():  # Looking for the first number in
             self.file.seek(-2, io.SEEK_CUR)
             letter = self.file.read(1)
 
@@ -34,7 +35,7 @@ class PDFParser:
         while True:
             if not letter.isdigit():
                 break
-            xrefAddress +=letter
+            xrefAddress += letter
             self.file.seek(-2, io.SEEK_CUR)
             letter = self.file.read(1)
 
@@ -43,9 +44,9 @@ class PDFParser:
         return xrefAddress
 
     def xRefExtractor(self, xrefAddress):
-        len_re = re.compile(b"(\d+) (\d+)")
+        len_re = re.compile(br"(\d+) (\d+)")
         self.file.seek(xrefAddress, io.SEEK_SET)  # Seek to x_ref_table
-        debug = self.file.readline()
+        self.file.readline()
         entries = len_re.search(self.file.readline())  # get number of xrefItems
         x_ref_table = []
         while entries:
@@ -64,7 +65,7 @@ class PDFParser:
         self.trailerStart = self.file.tell()
         content = self.file.read(self.trailer_end - 10 - self.trailerStart)
         trailer_dict = classify_steam(ObjectIter(content))
-        if (b"/Prev" in trailer_dict):
+        if b"/Prev" in trailer_dict:
             prevXref = int(trailer_dict[b"/Prev"])
             self.xRefExtractor(prevXref)
 
@@ -85,15 +86,15 @@ class PDFParser:
             self.file.seek(-2, io.SEEK_CUR)
             return
         else:
-            while (not currentChar.isdigit()):
+            while not currentChar.isdigit():
                 currentChar = self.file.read(1)
             self.file.seek(-1, io.SEEK_CUR)
 
     def extract_object(self, number):
         self.seek_object(number)
         inuse = self.xRef.table[number].in_use_entry
-        if (inuse == "f"):
-            self.skippedFree +=1
+        if inuse == "f":
+            self.skippedFree += 1
             raise AssertionError("Free")
         current_char = self.file.read(1)
         object_number = current_char
@@ -121,22 +122,20 @@ class PDFParser:
         object_stream += current_line[:endIndex]
         thing = classify_steam(ObjectIter(object_stream))
         if not (is_obj + 1):
-            ob = PDFStream(thing, num, rev, self.file.tell(), inuse)
-            if (type(ob.length) == IndirectObjectRef):
+            ob = PDFStream(thing, num, rev, self.file.tell(), inuse, self.file)
+            if type(ob.length) == IndirectObjectRef:
                 stream_length = self.extract_object(int(ob.length)).stream_dict
                 ob.length = int(stream_length)
             return ob
 
-        return PDFObject(thing, num, rev, self.file.tell(), inuse)
-
+        return PDFObject(thing, num, rev, inuse)
 
     def get_page_root(self):
-        document_calatog_address = self.trailer[b"/Root"].objectref -self.offset
-        document_calatog = self.pdfObjects[document_calatog_address]
-        page_root_address = document_calatog[b"/Pages"].objectref  -self.offset
+        document_catalog_address = self.trailer[b"/Root"].objectref - self.offset
+        document_catalog = self.pdfObjects[document_catalog_address]
+        page_root_address = document_catalog[b"/Pages"].objectref - self.offset
         page_root = self.pdfObjects[page_root_address]
         return page_root
-
 
     def close(self):
         self.file.close()
@@ -145,9 +144,9 @@ class PDFParser:
         return f"FilePath : {self.filePath}\n" \
                f"{self.xRef}"
 
-
     def __len__(self):
         return len(self.xRef)
+
     def __repr__(self):
         return self.__str__()
 
@@ -155,12 +154,12 @@ class PDFParser:
         newXrefTable = [XrefEntry(0, 65535, "f")]
         with open("out.pdf", "wb+")as f:
             f.write(b"%PDF-1.5\n")
-            for object in tqdm(self.pdfObjects.values(), "Writing Objects"):
+            for pdfobject in tqdm(self.pdfObjects.values(), "Writing Objects"):
                 pos = str(f.tell())
-                rev = str(object.object_rev)
-                inuse = object.inuse
+                rev = str(pdfobject.object_rev)
+                inuse = pdfobject.inuse
                 newXrefTable.append(XrefEntry(pos, int(rev), str(inuse)))
-                f.write(object.to_bytes(self.file) + b"\n")
+                f.write(pdfobject.to_bytes() + b"\n")
             xrefpos = f.tell()
             newXrefTable = XRefTable(newXrefTable, True)
             f.write(newXrefTable.__str__().encode("utf-8"))
@@ -182,11 +181,11 @@ class PDFParser:
 
         return object_store
 
-    def increment_refrences(self, n: int):
-        for object in tqdm(self.pdfObjects.values(), "Incrementing Refrences"):
-            object.offset_references(n)
+    def increment_references(self, n: int):
+        for pdfobject in tqdm(self.pdfObjects.values(), "Incrementing References"):
+            pdfobject.offset_references(n)
         self.trailer.offset_references(n)
-        self.offset +=n
+        self.offset += n
 
 
 if __name__ == '__main__':

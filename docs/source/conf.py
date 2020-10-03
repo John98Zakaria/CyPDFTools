@@ -19,7 +19,7 @@ print(sys.path)
 
 # -- Project information -----------------------------------------------------
 
-project = 'MiniPDFMerger'
+project = 'CyPDFTools'
 copyright = '2020, John Sorial'
 author = 'John Sorial'
 

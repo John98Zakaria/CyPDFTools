@@ -1,9 +1,12 @@
 SEPERATORS = b"\\/[]<>()\t\n\r"
 
-from io import BytesIO, SEEK_CUR, SEEK_SET, SEEK_END
+from io import BytesIO, SEEK_CUR, SEEK_END
 
 
 class ObjectIter:
+    """
+    Used to iterate over objects
+    """
 
     def __init__(self, stream: bytes, pointer=0):
         """
@@ -24,12 +27,6 @@ class ObjectIter:
         while self.peek(1).isspace():
             self.stream.seek(1, SEEK_CUR)
 
-    def _prepare_dictparse(self) -> None:
-        """
-        Moves the Pointer to the item preceding a forward slash /
-        """
-        self.move_to(b"/")
-
     def __len__(self):
         return self.length
 
@@ -38,29 +35,32 @@ class ObjectIter:
 
     def __next__(self):
         byte = self.stream.read(1)
-        if (byte == b""):
+        if byte == b"":
             raise StopIteration
         return byte
 
     def prev(self) -> bytes:
         """
         Decrements the counter
+
         :return: Previous element
 
         """
         self.stream.seek(-2, SEEK_CUR)
         return self.stream.read(1)
 
-    def move_pointer(self, n:int)->None:
+    def move_pointer(self, n: int) -> None:
         """
         Moves the pointer n characters
+
         :param n: Number of characters
         """
         self.stream.seek(n, SEEK_CUR)
 
-    def move_to(self, item:bytes):
+    def move_to(self, item: bytes):
         """
         Moves the iterator to given item
+
         :param item: item to move to
         :return: Items since the beginning of iteration till end
         """
@@ -98,6 +98,7 @@ class ObjectIter:
     def skip_space(self) -> None:
         """
         Moves stream to the next non whitespace char
+
         :param stream: Any iterable object
         """
         peek = self.peek(1)
@@ -113,6 +114,7 @@ class ObjectIter:
     def finish_number(self) -> bytes:
         """
         Move stream until a separating character is found
+
         :return: Resulting int
         """
         rest = b""
@@ -123,9 +125,10 @@ class ObjectIter:
         self.prev()  # Move back in order to preserve type token for next item
         return rest
 
-    def peek(self, n:int=1):
+    def peek(self, n: int = 1):
         """
         Returns the next n chars without incrementing the counter
+
         :param n: number of characters
         :return: Returns the next n chars without incrementing the counter
         """
@@ -136,9 +139,10 @@ class ObjectIter:
             return out_string
         return out_string
 
-    def reversePeek(self,n:int=1)->bytes:
+    def reversePeek(self, n: int = 1) -> bytes:
         """
         Returns the previous n chars without incrementing the counter
+
         :param n: number of characters
         :return: Returns the next n chars without incrementing the counter
         """
@@ -149,16 +153,14 @@ class ObjectIter:
         return out_string
 
 
-
 class Ibytable:
 
-    def itemToByte(self,item) -> bytes:
+    def itemToByte(self, item) -> bytes:
         try:
             return item.to_bytes()
         except AttributeError as E:
             # print(E)
             return bytes(item)
-
 
     def to_bytes(self):
         raise NotImplemented
@@ -166,9 +168,8 @@ class Ibytable:
     def __eq__(self, other):
         raise NotImplemented
 
-    def offset_references(self,offset:int):
+    def offset_references(self, offset: int):
         raise NotImplemented
 
     def __repr__(self):
         return self.__str__()
-
