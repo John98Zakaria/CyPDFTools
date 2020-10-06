@@ -1,5 +1,3 @@
-import re
-
 from PDFObjects import *
 from utils import ObjectIter
 
@@ -58,12 +56,28 @@ def parse_numeric(init: bytes, stream: ObjectIter):
             stream.prev()
             break
         elif char == b" ":  # found a space item maybe an indirect object reference
-            upcomingchars = stream.peek(3)
-            isReference = re.search(br"(\d+) R", upcomingchars)
+            pointer = stream.stream.tell()
+            try:
+                current_char = next(stream)
+            except StopIteration:
+                return number
+            rev_num = b""
+            while current_char.isdigit():
+                rev_num += current_char
+                try:
+                    current_char = next(stream)
+                except StopIteration:
+                    stream.stream.seek(pointer)
+                    return number
+
+            stream.prev()
+
+            isReference = stream.peek(2) == b" R"
             if isReference:
-                stream.move_pointer(len(isReference.group(1)) + 2)
-                return IndirectObjectRef(number, isReference.group(1))
+                stream.move_pointer(2)
+                return IndirectObjectRef(number, rev_num)
             else:
+                stream.stream.seek(pointer)
                 return number
         elif not char.isdigit() and char != b".":
             number += stream.finish_number()
@@ -83,7 +97,6 @@ def classify_steam(stream_iter: ObjectIter, letter=None):
     if letter is None:
         letter = next(stream_iter)
 
-    debug = letter.decode("utf-8")
     if letter == b"/":
         value = extract_name(stream_iter)
 
@@ -98,17 +111,15 @@ def classify_steam(stream_iter: ObjectIter, letter=None):
         if letter == b"<":
             value = parse_dictionary(stream_iter)
         else:
-            value = b"<" + letter + stream_iter.move_to(b">") + b">"
-            try:
-                next(stream_iter)
-            except StopIteration:
-                return value
+            value = b"<" + letter + stream_iter.move_to(b">") + b">"  # handles Hex Values
+            next(stream_iter)
 
     elif letter == b"(":
         value = parse_literalStrings(stream_iter)
-    elif letter in b"tf":  # handels true/false
-        value = letter + stream_iter.move_to(b"e") + next(stream_iter)
-    elif letter == b"n":  # handels null values
+    elif letter in b"tf":  # handles true/false
+        value = letter + stream_iter.move_to(b"e") + b"e"
+        next(stream_iter)
+    elif letter == b"n":  # handles null values
         peek = stream_iter.peek(3)
         if peek == b"ull":
             value = b"null"
@@ -175,7 +186,7 @@ def extract_array(stream: ObjectIter) -> PDFArray:
 def parse_arrayObjects(array_bytes: bytes) -> list:
     """
     Parses the extracted array
-    
+
     :param array_bytes:
     :return: A python list with the parsed objects
     """
@@ -191,6 +202,9 @@ def parse_arrayObjects(array_bytes: bytes) -> list:
 
 
 if __name__ == '__main__':
+    w = b'<< /ID [(\xa3\xa2\x86\x93\x8f \xdc\x91\xfeZ\x9f]\xb7\x91xM) (\xa3\xa2\x86\x93\x8f \xdc\x91\xfeZ\x9f]\xb7\x91xM)] /Info 409 0 R /Prev 601302 /Root 408 0 R /Size 670 >>\r\ns'
+    print(classify_steam(ObjectIter(w)))
+
     ##Bad table
     # t1 = b"""/Type/Annot/Border[ 0 0 0]/Dest[ 4863 0 R/XYZ 76.450073 383.27719 0]/F 4/Rect[ 167.25 565.5 447.75 582]/Subtype/Link>>"""
     # t1 = parse_dictionary(t1)

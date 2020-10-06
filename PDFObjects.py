@@ -9,21 +9,18 @@ class IndirectObjectRef(Ibytable):
     7.3.10 PDF 32000-1:2008
     """
 
-    def __init__(self, objectref, generationNum):
+    def __init__(self, objectref, generation_number):
         self.objectref = int(objectref)
-        self.generationNum = int(generationNum)
+        self.generationNum = int(generation_number)
 
     def __str__(self):
-        return f"{self.objectref} {self.generationNum} R"
+        return f"IndirectObjectRef({self.objectref},{self.generationNum})"
 
     def __repr__(self):
         return self.__str__()
 
-    def __int__(self):
-        return self.objectref
-
     def __eq__(self, other):
-        return self.objectref == other.objectref
+        return self.objectref == other.objectref and self.generationNum == other.generationNum
 
     def offset_references(self, offset: int) -> None:
         """
@@ -36,13 +33,13 @@ class IndirectObjectRef(Ibytable):
     def add_offset(self, offset: int):
         self.objectref += offset
 
-    def to_bytes(self) -> bytes:
+    def __bytes__(self) -> bytes:
         """
         Converts Indirect Reference to bytes
 
         :return: bytes representation of the indirect reference
         """
-        return self.__str__().encode("utf-8")
+        return f"{self.objectref} {self.generationNum} R".encode("utf-8")
 
 
 @dataclass
@@ -56,7 +53,7 @@ class PDFArray(Ibytable):
         self.data = data
 
     def __str__(self):
-        return "[" + ",".join(map(str, self.data)) + "]"
+        return f"PDFArray([{','.join(map(str, self.data))}])"
 
     def __eq__(self, other):
         return self.data == other.data
@@ -80,7 +77,7 @@ class PDFArray(Ibytable):
             if issubclass(type(value), Ibytable):
                 value.offset_references(offset)
 
-    def to_bytes(self) -> bytes:
+    def __bytes__(self) -> bytes:
         """
         Converts the object to bytes
 
@@ -88,7 +85,7 @@ class PDFArray(Ibytable):
         """
         bytes_representation = b"["
         for item in self.data:
-            bytes_representation += self.itemToByte(item) + b" "
+            bytes_representation += bytes(item) + b" "
         bytes_representation += b"]"
         return bytes_representation
 
@@ -124,15 +121,15 @@ class PDFDict(Ibytable):
 
     def __str__(self):
 
-        return str(self.data)
+        return f"PDFDict({str(self.data)})"
 
     def __eq__(self, other):
-        self.data = other.data
+        return self.data == other.data
 
     def __repr__(self):
         return self.__str__()
 
-    def to_bytes(self) -> bytes:
+    def __bytes__(self) -> bytes:
         """
         Converts the object to bytes
 
@@ -140,8 +137,7 @@ class PDFDict(Ibytable):
         """
         out_string = b"<<\n"
         for key, value in zip(self.data.keys(), self.data.values()):
-            if issubclass(type(value), Ibytable):
-                value = value.to_bytes()
+            value = bytes(value)
             out_string += key + b" " + value + b"\n"
         out_string = out_string + b">>"
         return out_string

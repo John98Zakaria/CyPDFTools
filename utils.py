@@ -155,14 +155,8 @@ class ObjectIter:
 
 class Ibytable:
 
-    def itemToByte(self, item) -> bytes:
-        try:
-            return item.to_bytes()
-        except AttributeError as E:
-            # print(E)
-            return bytes(item)
 
-    def to_bytes(self):
+    def __bytes__(self):
         raise NotImplemented
 
     def __eq__(self, other):

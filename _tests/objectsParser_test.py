@@ -1,6 +1,5 @@
-import pytest
 from PDFObjectsParser import *
-
+import pytest
 
 class TestArray:
     def test_simple(self):
@@ -10,13 +9,15 @@ class TestArray:
         simple4 = b"[ 484  9874 618 798]"
         simple5 = b"[/Train (KEY) (Len(Pi))]"
         simple6 = b"[null false true]"
+        simple7 = b"[11655 645 R]"
 
         assert classify_steam(ObjectIter(simple1)) == PDFArray([b"1", b"2", b"3", b"4", b"5"])
-        assert classify_steam(ObjectIter(simple2)) == PDFArray([b"1", IndirectObjectRef(2,0)])
-        assert classify_steam(ObjectIter(simple3)) == PDFArray([IndirectObjectRef(15,0)])
+        assert classify_steam(ObjectIter(simple2)) == PDFArray([b"1", IndirectObjectRef(2, 0)])
+        assert classify_steam(ObjectIter(simple3)) == PDFArray([IndirectObjectRef(15, 0)])
         assert classify_steam(ObjectIter(simple4)) == PDFArray([b"484", b"9874", b"618", b"798"])
         assert classify_steam(ObjectIter(simple5)) == PDFArray([b"/Train", b"(KEY)", b"(Len(Pi))"])
         assert classify_steam(ObjectIter(simple6)) == PDFArray([b"null", b"false", b"true"])
+        assert classify_steam(ObjectIter(simple7)) == PDFArray([IndirectObjectRef(11655, 645)])
 
     def test_nested(self):
         nested1 = b"[1 2 3 [4 5 6]]"
@@ -26,12 +27,14 @@ class TestArray:
         nested5 = b"[1 20 318 [4 [-5.497] 6]]"
 
         assert classify_steam(ObjectIter(nested1)) == PDFArray(
-            [b'1', b'2', b'3', PDFArray( [b'4', b'5', b'6'])])
+            [b'1', b'2', b'3', PDFArray([b'4', b'5', b'6'])])
         assert classify_steam(ObjectIter(nested2)) == PDFArray([b"1", PDFArray([b"4", b"5", b"6"]), b"5", b"8"])
         assert classify_steam(ObjectIter(nested3)) == PDFArray(
             [b"1", PDFArray([b"2", b"3"]), PDFArray([b"4", b"5", b"6"])])
-        assert classify_steam(ObjectIter(nested4)) == PDFArray([b"1", b"2", b"3" , PDFArray([b"4", PDFArray([b"5"]), b"6"])])
-        assert classify_steam(ObjectIter(nested5)) == PDFArray([b'1', b'20', b'318', PDFArray([b'4', PDFArray([b'-5.497']), b'6'])])
+        assert classify_steam(ObjectIter(nested4)) == PDFArray(
+            [b"1", b"2", b"3", PDFArray([b"4", PDFArray([b"5"]), b"6"])])
+        assert classify_steam(ObjectIter(nested5)) == PDFArray(
+            [b'1', b'20', b'318', PDFArray([b'4', PDFArray([b'-5.497']), b'6'])])
 
     def test_empty(self):
         empty1 = b"[]"
@@ -45,38 +48,54 @@ class TestArray:
         assert classify_steam(ObjectIter(empty4)) == PDFArray([PDFArray([]), PDFArray([]), PDFArray([PDFArray([])])])
 
 
-
 class TestNumeric:
     def test_simple(self):
-        n1 = "5"
-        n2 = "-5"
-        n3 = "105"
-        n4 = "10568"
-        n5 = "-1051.86"
-        n7 = "-2614816.984251"
+        n1 = b"5"
+        n2 = b"-5"
+        n3 = b"105"
+        n4 = b"10568"
+        n5 = b"-1051.86"
+        n6 = b"-2614816.984251"
+
+        assert classify_steam(ObjectIter(n1)) == n1
+        assert classify_steam(ObjectIter(n2)) == n2
+        assert classify_steam(ObjectIter(n3)) == n3
+        assert classify_steam(ObjectIter(n4)) == n4
+        assert classify_steam(ObjectIter(n5)) == n5
+        assert classify_steam(ObjectIter(n6)) == n6
 
     def test_ref(self):
-        r1 = "4 0 R"
-        r2 = "15 0 R"
-        r3 = "190 0 R"
-        r4 = "190 0 R"
+        r1 = b"4 0 R"
+        r2 = b"15 0 R"
+        r3 = b"190 0 R"
+        r4 = b"846 165 R"
+        r5 = b"68 12 R"
+
+        assert classify_steam(ObjectIter(r1)) == IndirectObjectRef(4, 0)
+        assert classify_steam(ObjectIter(r2)) == IndirectObjectRef(15, 0)
+        assert classify_steam(ObjectIter(r3)) == IndirectObjectRef(190, 0)
+        print(ObjectIter(r4))
+        assert classify_steam(ObjectIter(r4)) == IndirectObjectRef(846, 165)
+        assert classify_steam(ObjectIter(r5)) == IndirectObjectRef(68, 12)
 
 
 def test_OnSameLine():
     t1 = (
         b"""/Type/Page/BleedBox[ 0 0 504 661.5]/Contents 5 0 R/CropBox[ 0 0 504 661.5]/MediaBox[ 0 0 504 661.5]/Parent 3493 0 R/Resources<</Font<</F3 2186 0 R>>/ProcSet[/Text/ImageC]>>/Rotate 0/Trans<<>>>>""")
-    assert (parse_dictionary(t1).data == {'Type': 'Page', 'BleedBox': ['0', '0', '504', '661.5'],
-                                          'Contents': IndirectObjectRef(5),
-                                          'CropBox': ['0', '0', '504', '661.5'], 'MediaBox': ['0', '0', '504', '661.5'],
-                                          'Parent': IndirectObjectRef(3493),
-                                          'Resources': {'Font': {'F3': IndirectObjectRef(2186)},
-                                                        'ProcSet': ['/Text/ImageC']},
-                                          'Rotate': "0",
-                                          'Trans': {}})
+    assert parse_dictionary(t1).data == {b'/Type': b'/Page',
+                                         b'/BleedBox': PDFArray([b'0', b'0', b'504', b'661.5']),
+                                         b'/Contents': IndirectObjectRef(5, 0), b'/CropBox':
+                                             PDFArray([b'0', b'0', b'504', b'661.5']),
+                                         b'/MediaBox': PDFArray([b'0', b'0', b'504', b'661.5']),
+                                         b'/Parent': IndirectObjectRef(3493, 0),
+                                         b'/Resources': PDFDict(
+                                             {b'/Font': PDFDict({b'/F3': IndirectObjectRef(2186, 0)}),
+                                              b'/ProcSet': PDFArray([b'/Text', b'/ImageC'])}),
+                                         b'/Rotate': b'0', b'/Trans': PDFDict({})}
 
 
 def test_ListParsing():
-    l1 = """/Type /Pages /Kids [
+    l1 = b"""/Type /Pages /Kids [
 4 0 R
 26 0 R
 40 0 R
@@ -110,40 +129,49 @@ def test_ListParsing():
 ] /Count 30
 >>"""
 
-    assert parse_dictionary(l1).data == {'/Count': '30',
-                                         '/Kids': PDFArray(
-                                             [IndirectObjectRef(4), IndirectObjectRef(26), IndirectObjectRef(40),
-                                              IndirectObjectRef(46),
-                                              IndirectObjectRef(52), IndirectObjectRef(58),
-                                              IndirectObjectRef(64), IndirectObjectRef(70),
-                                              IndirectObjectRef(76), IndirectObjectRef(82), IndirectObjectRef(88),
-                                              IndirectObjectRef(94), IndirectObjectRef(100), IndirectObjectRef(110),
-                                              IndirectObjectRef(117), IndirectObjectRef(125), IndirectObjectRef(132),
-                                              IndirectObjectRef(138), IndirectObjectRef(144), IndirectObjectRef(150),
-                                              IndirectObjectRef(156), IndirectObjectRef(164), IndirectObjectRef(170),
-                                              IndirectObjectRef(176), IndirectObjectRef(182), IndirectObjectRef(189),
-                                              IndirectObjectRef(195), IndirectObjectRef(201), IndirectObjectRef(211),
-                                              IndirectObjectRef(224)]),
-                                         '/Type': '/Pages'}
+    assert parse_dictionary(l1).data == {b'/Count': b'30',
+                                         b'/Kids': PDFArray(
+                                             [IndirectObjectRef(4, 0), IndirectObjectRef(26, 0),
+                                              IndirectObjectRef(40, 0),
+                                              IndirectObjectRef(46, 0),
+                                              IndirectObjectRef(52, 0), IndirectObjectRef(58, 0),
+                                              IndirectObjectRef(64, 0), IndirectObjectRef(70, 0),
+                                              IndirectObjectRef(76, 0), IndirectObjectRef(82, 0),
+                                              IndirectObjectRef(88, 0),
+                                              IndirectObjectRef(94, 0), IndirectObjectRef(100, 0),
+                                              IndirectObjectRef(110, 0),
+                                              IndirectObjectRef(117, 0), IndirectObjectRef(125, 0),
+                                              IndirectObjectRef(132, 0),
+                                              IndirectObjectRef(138, 0), IndirectObjectRef(144, 0),
+                                              IndirectObjectRef(150, 0),
+                                              IndirectObjectRef(156, 0), IndirectObjectRef(164, 0),
+                                              IndirectObjectRef(170, 0),
+                                              IndirectObjectRef(176, 0), IndirectObjectRef(182, 0),
+                                              IndirectObjectRef(189, 0),
+                                              IndirectObjectRef(195, 0), IndirectObjectRef(201, 0),
+                                              IndirectObjectRef(211, 0),
+                                              IndirectObjectRef(224, 0)]),
+                                         b'/Type': b'/Pages'}
 
-    t2 = """/BaseFont/FWRCSR+CMMIB10/FontDescriptor 34 0 R/Type/Font
+    t2 = b"""/BaseFont/FWRCSR+CMMIB10/FontDescriptor 34 0 R/Type/Font
 /FirstChar 78/LastChar 121/Widths[ 950 0
 0 0 0 0 0 0 0 0 947 674 0 0 0 0 0 0
 0 0 0 0 0 0 0 544 0 0 0 0 0 0 0 0
 0 0 0 0 415 0 0 0 0 590]
 /Encoding/WinAnsiEncoding/Subtype/Type1>>"""
 
-    assert parse_dictionary(t2).data == {'/BaseFont': '/FWRCSR+CMMIB10',
-                                         '/FontDescriptor': IndirectObjectRef(34),
-                                         '/Type': '/Font', '/FirstChar': '78',
-                                         '/LastChar': '121',
-                                         '/Widths': PDFArray(["950", "0", "0", "0", "0", "0", "0", "0", "0", "0", "947",
-                                                              "674", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
-                                                              "0",
-                                                              "0", "0", "544", "0", "0", "0", "0", "0", "0", "0", "0",
-                                                              "0",
-                                                              "0", "0", "0", "415", "0", "0", "0", "0", "590"]),
-                                         '/Encoding': '/WinAnsiEncoding', '/Subtype': '/Type1'}
+    assert parse_dictionary(t2).data == {b'/BaseFont': b'/FWRCSR+CMMIB10',
+                                         b'/FontDescriptor': IndirectObjectRef(34, 0),
+                                         b'/Type': b'/Font', b'/FirstChar': b'78',
+                                         b'/LastChar': b'121',
+                                         b'/Widths': PDFArray(
+                                             [b"950", b"0", b"0", b"0", b"0", b"0", b"0", b"0", b"0", b"0", b"947",
+                                              b"674", b"0", b"0", b"0", b"0", b"0", b"0", b"0", b"0", b"0", b"0",
+                                              b"0",
+                                              b"0", b"0", b"544", b"0", b"0", b"0", b"0", b"0", b"0", b"0", b"0",
+                                              b"0",
+                                              b"0", b"0", b"0", b"415", b"0", b"0", b"0", b"0", b"590"]),
+                                         b'/Encoding': b'/WinAnsiEncoding', b'/Subtype': b'/Type1'}
 
 
 def test_StringLiterals():

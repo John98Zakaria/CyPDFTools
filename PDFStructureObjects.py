@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from tqdm import tqdm
 
 from PDFObjects import PDFDict
+from PDFObjectsParser import classify_steam
 from utils import Ibytable
 
 XrefEntry = namedtuple("XrefEntry", ["address", "revision", "in_use_entry"])
@@ -16,7 +17,7 @@ class PDFStream(Ibytable):
     Represents objects that contain a stream
     """
 
-    def __init__(self, stream_dict: PDFDict, object_number, object_rev, start_address, inuse, file):
+    def __init__(self, stream_dict: PDFDict, object_number, object_rev, start_address, inuse, file, pdfObjectsFunc):
         """
         :param stream_dict: PDFDict describing the stream
         :param object_number: Object Number
@@ -28,10 +29,12 @@ class PDFStream(Ibytable):
         self.stream_dict = stream_dict
         self.object_number = int(object_number)
         self.object_rev = int(object_rev)
-        self.length = stream_dict[b"/Length"]
         self.startAddress = int(start_address)
+        self.length = self.stream_dict[b"/Length"]
         self.inuse = inuse
         self.file = file
+        self.objectsDict = pdfObjectsFunc
+
 
     def read_stream(self) -> bytes:
         """
@@ -41,7 +44,13 @@ class PDFStream(Ibytable):
         :return: streamobject
         """
         self.file.seek(self.startAddress)
-        return self.file.read(int(self.length))
+        try:
+            length = int(self.length)
+            return self.file.read(length)
+
+        except TypeError:
+            self.length = int(self.objectsDict(self.length.objectref).stream_dict)
+            return self.file.read(self.length)
 
     def offset_references(self, offset: int) -> None:
         """
@@ -52,14 +61,14 @@ class PDFStream(Ibytable):
         self.stream_dict.offset_references(offset)
         self.object_number += offset
 
-    def to_bytes(self) -> bytes:
+    def __bytes__(self) -> bytes:
         """
         Converts the object and all the underlying objects to bytes
 
         :return: Byte representation of the file
         """
         byte_representation = f"{self.object_number} {self.object_rev} obj\n".encode("utf-8")
-        byte_representation += self.itemToByte(self.stream_dict)
+        byte_representation += bytes(self.stream_dict)
         byte_representation += b"\nstream\n"
         byte_representation += self.read_stream()
         byte_representation += "\nendsteam\nendobj\n".encode("utf-8")
@@ -82,6 +91,9 @@ class PDFObject(Ibytable):
         self.object_rev = object_rev
         self.inuse = inuse
 
+    def process_future(self):
+        self.stream_dict = classify_steam(self.stream_dict)
+
     def read_stream(self):  # is there just for the state design pattern
         return b""
 
@@ -97,14 +109,14 @@ class PDFObject(Ibytable):
         except AttributeError:
             pass
 
-    def to_bytes(self) -> bytes:
+    def __bytes__(self) -> bytes:
         """
         Converts the object and all the underlying objects to bytes
 
         :return: Byte representation of the file
         """
         byte_representation = f"{self.object_number} {self.object_rev} obj\n".encode("utf-8")
-        byte_representation += self.itemToByte(self.stream_dict)
+        byte_representation += bytes(self.stream_dict)
         byte_representation += "\nendobj\n".encode("utf-8")
         return byte_representation
 

@@ -1,54 +1,77 @@
-from tqdm import tqdm
+import time
 
-from PDFObjects import IndirectObjectRef
-from PDFParser import PDFParser, XrefEntry, XRefTable
-
+from PDFParser import *
 
 class PDFMerger:
-    def __init__(self, pdf1: PDFParser, pdf2: PDFParser):
-        self.pdf1 = pdf1
-        self.pdf2 = pdf2
+    def __init__(self, pdfs):
+        self.pdfFiles = pdfs
+        self.objectCount = sum(len(pdf) for pdf in pdfs)
+
+
+    def new_page_root(self):
+        self.objectCount += 1
+        root_ref = IndirectObjectRef(self.objectCount, 0)
+        page_count = 0
+        kids = []
+        for pdf in self.pdfFiles:
+            root = pdf.get_page_root()
+            page_count += int(root[b"/Count"])
+            kids += root[b"/Kids"].data
+            root[b"/Parent"] = root_ref
+
+        rootDict = PDFDict({b"/Type": b"/Pages",
+                            b"/Kids": PDFArray(kids),
+                            b"/Count": str(page_count).encode("utf-8")})
+
+        self.pdfFiles[0].trailer[b"/Size"] = str(self.objectCount).encode("utf-8")
+        self.pdfFiles[0].get_document_catalog()[b"/Pages"] = root_ref
+
+        return PDFObject(rootDict, self.objectCount, 0, "n")
 
     def merge(self, out_path: str) -> None:
         """
         Merges the accumulated PDFFiles
+
         :param out_path: Path for the output file
         """
-        self.pdf2.increment_references(self.pdf1.__len__())
-        root1 = self.pdf1.get_page_root()
-        root2 = self.pdf2.get_page_root()
-        root2[b"/Parent"] = IndirectObjectRef(root1.object_number, root1.object_rev)
-        root1[b"/Kids"].data.append(IndirectObjectRef(root2.object_number, root2.object_rev))
-        root1[b"/Count"] = str(int(root1[b"/Count"]) + int(root2[b"/Count"])).encode("utf-8")
-        self.pdf1.trailer[b"/Size"] = str(len(pdf1) + len(pdf2)).encode("utf-8")
-        newXrefTable = [XrefEntry(0, 65535, "f")]
-        with open("Merge3.pdf", "wb+")as f:
-            f.write(b"%PDF-1.5\n")
-            for object in tqdm(self.pdf1.pdfObjects.values(), "Writing Objects"):
-                pos = str(f.tell())
-                rev = str(object.object_rev)
-                inuse = object.inuse
-                newXrefTable.append(XrefEntry(pos, int(rev), str(inuse)))
-                f.write(object.to_bytes(self.pdf1.file) + b"\n")
-            for object in tqdm(self.pdf2.pdfObjects.values(), "Writing Objects"):
-                pos = str(f.tell())
-                rev = str(object.object_rev)
-                inuse = object.inuse
-                newXrefTable.append(XrefEntry(pos, int(rev), str(inuse)))
-                f.write(object.to_bytes(self.pdf2.file) + b"\n")
+        accumulated_offset = len(self.pdfFiles[0])
+        for pdf in self.pdfFiles[1:]:
+            pdf.increment_references(accumulated_offset)
+            accumulated_offset += len(pdf)
 
+        self.pdfFiles[0].pdfObjects[self.objectCount] = (self.new_page_root())
+
+        newXrefTable = [XrefEntry(0, 65535, "f")]
+        with open(out_path, "wb+")as f:
+            f.write(b"%PDF-1.5\n")
+            for index, pdf in enumerate(self.pdfFiles):
+                for object in tqdm(pdf.pdfObjects.values(), f"Writing Objects for {index}. pdf"):
+                    pos = str(f.tell())
+                    rev = str(object.object_rev)
+                    inuse = object.inuse
+                    newXrefTable.append(XrefEntry(pos, int(rev), str(inuse)))
+                    f.write(bytes(object))
             xrefpos = f.tell()
             newXrefTable = XRefTable(newXrefTable, True)
             f.write(newXrefTable.__str__().encode("utf-8"))
             f.write(b"trailer\n")
             # self.trailer.data.pop("/DocChecksum")
-            f.write(self.pdf1.trailer.to_bytes())
+            f.write(bytes(self.pdfFiles[0].trailer))
             f.write(f"startxref\n{xrefpos}\n%%EOF\n".encode("utf-8"))
 
 
 if __name__ == '__main__':
-    pdf1 = PDFParser("test_pdfs/FuldaFinalProjectHighLevelDescriptionWS2020.pdf")
-    pdf2 = PDFParser("test_pdfs/FuldaMilestone0WS2020.pdf")
-    merger = PDFMerger(pdf2, pdf1)
+    start = time.time()
+    pdf1 = PDFParser("/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_01_Einführung.pdf")
+    pdf2 = PDFParser(
+        "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_02_Mathematische_Grundlagen_Anmerkungen.pdf")
+    pdf3 = PDFParser(
+        "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_03_Formale_Sprachen_und_Grammatiken_Anmerkungen.pdf")
+    pdf4 = PDFParser(
+        "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_04_Reguläre_Sprachen_Endliche_Automaten_Anmerkungen.pdf")
+    # pdf5 = PDFParser("/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_05_Weitere_Charakterisierungen_Regulärer_Sprachen_Anmerkungen.pdf")
 
-    merger.merge()
+    merger = PDFMerger([pdf1, pdf2, pdf3,pdf4])
+
+    merger.merge("BlattMerger.pdf")
+    print(time.time() - start)
