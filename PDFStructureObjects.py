@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from tqdm import tqdm
 
 from PDFObjects import PDFDict
-from PDFObjectsParser import classify_steam
 from utils import Ibytable
 
 XrefEntry = namedtuple("XrefEntry", ["address", "revision", "in_use_entry"])
@@ -91,8 +90,6 @@ class PDFObject(Ibytable):
         self.object_rev = object_rev
         self.inuse = inuse
 
-    def process_future(self):
-        self.stream_dict = classify_steam(self.stream_dict)
 
     def read_stream(self):  # is there just for the state design pattern
         return b""
