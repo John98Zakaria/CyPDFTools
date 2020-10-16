@@ -14,10 +14,8 @@ class ObjectIter:
         :param pointer: A pointer to the start index
         """
         self.stream = BytesIO(stream)
-        self.stream.seek(pointer)
-        self.length = self.stream.seek(0, SEEK_END)
+        self.length = self.stream.getbuffer().nbytes
         self.deb = stream
-        self.stream.seek(0)
         self._clean()
 
     def _clean(self):
