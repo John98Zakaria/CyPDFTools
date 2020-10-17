@@ -13,7 +13,7 @@ def extract_name(stream: ObjectIter) -> bytes:
     """
     out_string = b"/"
     for letter in stream:
-        if (letter in SEPERATORS):
+        if letter in SEPERATORS:
             stream.prev()  # Reverts a step back to where
             # the name ended in order for the typechecker to deduce the type
             break
@@ -130,7 +130,7 @@ def classify_steam(stream_iter: ObjectIter, letter=None):
     return value
 
 
-def parse_dictionary(pdf_stream: ObjectIter) -> PDFDict:
+def parse_dictionary(pdf_stream) -> PDFDict:
     """
     Parses PDFDictionary objects
 
@@ -167,41 +167,24 @@ def extract_array(stream: ObjectIter) -> PDFArray:
     :param stream: ObjectIter
     :return: PDFArray
     """
-    out_string = b""
-    count_closingBraces = 0
-    count_openingBraces = 1
+    array = PDFArray([])
 
     for letter in stream:
-        if letter == b"]":
-            count_closingBraces += 1
-        elif letter == b"[":
-            count_openingBraces += 1
-        if count_closingBraces == count_openingBraces:
-            break
-        out_string += letter
-
-    return PDFArray(parse_arrayObjects(out_string))
-
-
-def parse_arrayObjects(array_bytes: bytes) -> list:
-    """
-    Parses the extracted array
-
-    :param array_bytes:
-    :return: A python list with the parsed objects
-    """
-    stream_iter = ObjectIter(array_bytes)
-    array = []
-    for char in stream_iter:
-        if (char.isspace()):
+        if letter.isspace():
             continue
-        item = classify_steam(stream_iter, char)
-        array.append(item)
+        elif letter == b"]":
+            break
+        item = classify_steam(stream, letter)
+        array.data.append(item)
 
     return array
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
+    simple4 = b"[ 484  9874 618 798]"
+
+    classify_steam(ObjectIter(simple4))
+
     w = b'<< /ID [(\xa3\xa2\x86\x93\x8f \xdc\x91\xfeZ\x9f]\xb7\x91xM) (\xa3\xa2\x86\x93\x8f \xdc\x91\xfeZ\x9f]\xb7\x91xM)] /Info 409 0 R /Prev 601302 /Root 408 0 R /Size 670 >>\r\ns'
     print(classify_steam(ObjectIter(w)))
 
@@ -218,7 +201,6 @@ if __name__ == '__main__':
     #
     # simple5 = b"[/Train (KEY) (Len(Pi))]"
     # parse_stream(ObjectIter(simple5))
-    parse_arrayObjects(b'(_summary_7)(idp5636912)')
     # bad = b'<</Lang(DE-DE)/MarkInfo<</Marked true>>/Metadata 2 0 R/Outlines 12 0 R/OutputIntents 13 0 R/PageLayout/SinglePage/Pages 3 0 R/StructTreeRoot 14 0 R/Type/Catalog>>\rendobj\r2 0 obj\r<</Length 6657/Subtype/XML/Type/Metadata>>'
     # parse_stream(ObjectIter(bad))
     # print(parse_stream(ObjectIter(bad)))

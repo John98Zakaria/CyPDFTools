@@ -13,6 +13,7 @@ class PDFParser:
     """
     Parses a given PDF file
     """
+
     def __init__(self, filePath):
         self.file = open(filePath, "rb")
         self.filePath = filePath
@@ -58,7 +59,7 @@ class PDFParser:
         self.file.seek(xrefAddress, SEEK_SET)  # Seek to x_ref_table
         xref_type = self.file.read(1)
         if xref_type == b"x":  # Xref is explicitly written in file
-            self.file.readline()
+            line = self.file.readline()
             entries = len_re.search(self.file.readline())  # get number of xrefItems
             x_ref_table = []
             xrefLength = int(entries.group(2))
@@ -78,27 +79,33 @@ class PDFParser:
             self.xRef.table.pop(0)  # delete XrefObject
             if XRefDict[b"/Type"] != b"/XRef":
                 raise AssertionError("XRef dict has to have XRef as type")
-            if XRefDict[b"/Filter"] != b"/FlateDecode":
-                raise AssertionError("Only FlateDecode is supported")
+
+            trailer_stream = XRefDict.read_stream()
+
+            if b"/Filter" in XRefDict:
+                if XRefDict[b"/Filter"] == b"/FlateDecode":
+                    trailer_stream = zlib.decompress(trailer_stream)
+
+
+                else:
+                    raise AssertionError("Only FlateDecode is supported")
 
             W = XRefDict[b"/W"]
             W = [int(i) for i in W.data]  # Convert W array to int array to be used
-            trailer_stream = XRefDict.read_stream()
-            decompressed_trailer = zlib.decompress(trailer_stream)
             if b"/DecodeParms" in XRefDict:  # Table was compressed using a png compression algorithm
                 number_of_columns = int(XRefDict[b"/DecodeParms"][b"/Columns"])
                 predictor = int(XRefDict[b"/DecodeParms"][b"/Predictor"])
                 if predictor >= 10:
-                    decompressed_trailer = png_algorithmPipeline(decompressed_trailer, number_of_columns, predictor)
+                    trailer_stream = png_algorithmPipeline(trailer_stream, number_of_columns, predictor)
 
-            decompressed_trailer = BytesIO(decompressed_trailer)
+            trailer_stream = BytesIO(trailer_stream)
             ExtractedXRef = XRefTable([], True)
-            size = decompressed_trailer.getbuffer().nbytes
+            size = trailer_stream.getbuffer().nbytes
             compressed_objects = defaultdict(list)
-            while decompressed_trailer.tell() != size:
-                field_1 = int.from_bytes(decompressed_trailer.read(W[0]), "big")
-                field_2 = int.from_bytes(decompressed_trailer.read(W[1]), "big")
-                field_3 = int.from_bytes(decompressed_trailer.read(W[2]), "big")
+            while trailer_stream.tell() != size:
+                field_1 = int.from_bytes(trailer_stream.read(W[0]), "big")
+                field_2 = int.from_bytes(trailer_stream.read(W[1]), "big")
+                field_3 = int.from_bytes(trailer_stream.read(W[2]), "big")
                 if field_1 == 0:
                     ExtractedXRef.table.append(XrefEntry(field_2, field_3, "f"))
                 if field_1 == 1:
@@ -280,14 +287,14 @@ class PDFParser:
     def __repr__(self):
         return self.__str__()
 
-    def save(self):
+    def save(self, path):
         """
         Writes the contents of the pdf to disk
 
         """
         newXrefTable = [XrefEntry(0, 65535, "f")]
-        with open("out.pdf", "wb+")as f:
-            f.write(b"%PDF-1.4\n")  # 1.4 because we removed all ObjectStreams
+        with open(path, "wb+")as f:
+            f.write(b"%PDF-1.7\n")
             for pdfobject in tqdm(self.pdfObjects.values(), "Writing Objects"):
                 pos = str(f.tell())
                 rev = str(pdfobject.object_rev)
@@ -328,10 +335,13 @@ class PDFParser:
 
 
 if __name__ == '__main__':
-    pdf = PDFParser("test_pdfs/PDF-Specifications.pdf")
+    pdf = PDFParser("/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_04_Reguläre_Sprachen_Endliche_Automaten_Anmerkungen.pdf")
     # pdf.file.seek(8521)
-    pdf.save()
-    print(pdf.file.readline())
-    print(pdf.file.readline())
-    print(pdf.file.readline())
+    indecies  = pdf.get_pages()
+    print(pdf.getFromPDFDict(193))
+    print(indecies)
+    print(pdf.get_page_root())
+    # for i in indecies:
+    #     print(pdf.getFromPDFDict(i.objectref))
+
     pdf.close()

@@ -34,7 +34,6 @@ class PDFStream(Ibytable):
         self.file = file
         self.objectsDict = pdfObjectsFunc
 
-
     def read_stream(self) -> bytes:
         """
         Read stream from file
@@ -82,9 +81,9 @@ class PDFStream(Ibytable):
     def __setitem__(self, key, value):
         self.stream_dict[key] = value
 
-
     def __contains__(self, item):
         return item in self.stream_dict
+
 
 class PDFObject(Ibytable):
     def __init__(self, stream_dict, object_number, object_rev, inuse):
@@ -92,7 +91,6 @@ class PDFObject(Ibytable):
         self.object_number = int(object_number)
         self.object_rev = object_rev
         self.inuse = inuse
-
 
     def read_stream(self):  # is there just for the state design pattern
         return b""
@@ -121,7 +119,7 @@ class PDFObject(Ibytable):
         return byte_representation
 
     def __str__(self):
-        return f"Object {self.stream_dict}"
+        return f"Object {self.object_number} {self.stream_dict}"
 
     def __getitem__(self, item):
         return self.stream_dict[item]
@@ -139,7 +137,7 @@ class XRefTable(Ibytable):
         self.table = self.parse_table(xref_table) if not parsed else xref_table
 
     def __add__(self, other):
-        return XRefTable(self.table + other.table,True)
+        return XRefTable(self.table + other.table, True)
 
     def __getitem__(self, item):
         return self.table[item]

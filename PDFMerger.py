@@ -3,11 +3,11 @@ import time
 from PDFObjects import IndirectObjectRef
 from PDFParser import *
 
+
 class PDFMerger:
     def __init__(self, pdfs):
         self.pdfFiles = pdfs
         self.objectCount = sum(len(pdf) for pdf in pdfs)
-
 
     def new_page_root(self):
         self.objectCount += 1
@@ -66,13 +66,13 @@ if __name__ == '__main__':
     pdf1 = PDFParser("/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_01_Einführung.pdf")
     pdf2 = PDFParser(
         "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_02_Mathematische_Grundlagen_Anmerkungen.pdf")
-    pdf3 = PDFParser(
-        "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_03_Formale_Sprachen_und_Grammatiken_Anmerkungen.pdf")
+    # pdf3 = PDFParser(
+    #     "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_03_Formale_Sprachen_und_Grammatiken_Anmerkungen.pdf")
     pdf4 = PDFParser(
         "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_04_Reguläre_Sprachen_Endliche_Automaten_Anmerkungen.pdf")
     # pdf5 = PDFParser("/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_05_Weitere_Charakterisierungen_Regulärer_Sprachen_Anmerkungen.pdf")
 
-    merger = PDFMerger([pdf1, pdf2, pdf3,pdf4])
+    merger = PDFMerger([pdf1, pdf2,pdf4])
 
     merger.merge("BlattMerger.pdf")
     print(time.time() - start)
