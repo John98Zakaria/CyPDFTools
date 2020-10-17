@@ -1,7 +1,11 @@
 import io
+
+from PDFObjectStreamParser import PDFObjectStreamParser
 from PDFObjectsParser import classify_steam, PDFArray
 from PDFStructureObjects import *
+from png_algorithm import png_algorithmPipeline
 from utils import ObjectIter
+from collections import defaultdict
 import zlib
 
 
@@ -13,12 +17,14 @@ class PDFParser:
         self.trailerStart = 0
         self.skippedFree = 0
         self.offset = 0
-        self.xRefAddress = self._extractXrefAddress()
-        self.compressed_objects = []
+        self.pdfObjects = {}
+        self.trailer = []
+        self.compressed_objects = {}
         self.xRef = XRefTable([], True)
-        self.xRefExtractor(self.xRefAddress)
-        # self.trailer = self.trailer_parser()
+        self.xRefExtractor(self._extractXrefAddress())
+        self.trailer = self.trailer_parser()
         self.pdfObjects = self.read_all_objects()
+        self.unpack_compressed_objects()
 
     def _extractXrefAddress(self):
         self.file.seek(-3, io.SEEK_END)
@@ -39,7 +45,7 @@ class PDFParser:
         xrefAddress = int(xrefAddress[::-1])
         return xrefAddress
 
-    def xRefExtractor(self, xrefAddress):
+    def xRefExtractor(self, xrefAddress)->None:
         len_re = re.compile(br"(\d+) (\d+)")
         self.file.seek(xrefAddress, io.SEEK_SET)  # Seek to x_ref_table
         xref_type = self.file.read(1)
@@ -52,11 +58,12 @@ class PDFParser:
                 x_ref_table += self.file.readlines(xrefLength * 20 - 1)
                 entries = len_re.search(self.file.readline())  # get number of xrefItems
 
-            self.xRef + XRefTable(x_ref_table)
+            self.xRef = self.xRef + XRefTable(x_ref_table)
             self.trailerStart = self.file.tell()
-        if xref_type.isdigit():  # Xref is stored in a stream PDF1.5+
+            return
+        elif xref_type.isdigit():  # Xref is stored in a stream PDF1.5+
             self.file.seek(-1, io.SEEK_CUR)  # unconsume the letter that was just read
-            self.xRef.table.append(XrefEntry(self.xRefAddress, 0, "n"))
+            self.xRef.table.append(XrefEntry(xrefAddress, 0, "n"))
             XRefDict = self.extract_object(0)  # Xref address is the first object
             # in the table (Optimisation is the root of all evil branchless programming)
             self.xRef.table.pop(0)  # delete XrefObject
@@ -64,16 +71,21 @@ class PDFParser:
                 raise AssertionError("XRef dict has to have XRef as type")
             if XRefDict[b"/Filter"] != b"/FlateDecode":
                 raise AssertionError("Only FlateDecode is supported")
+
             W = XRefDict[b"/W"]
             W = [int(i) for i in W.data]  # Convert W array to int array to be used
             trailer_stream = XRefDict.read_stream()
             decompressed_trailer = zlib.decompress(trailer_stream)
+            if b"/DecodeParms" in XRefDict: # Table was compressed using a png compression algorithm
+                number_of_columns = int(XRefDict[b"/DecodeParms"][b"/Columns"])
+                predictor = int(XRefDict[b"/DecodeParms"][b"/Predictor"])
+                if predictor >= 10:
+                    decompressed_trailer = png_algorithmPipeline(decompressed_trailer,number_of_columns,predictor)
+
             decompressed_trailer = io.BytesIO(decompressed_trailer)
             ExtractedXRef = XRefTable([], True)
-            decompressed_trailer.seek(0, io.SEEK_END)
-            size = decompressed_trailer.tell()
-            decompressed_trailer.seek(0)
-            compressed_objects = []
+            size = decompressed_trailer.getbuffer().nbytes
+            compressed_objects = defaultdict(list)
             while decompressed_trailer.tell() != size:
                 field_1 = int.from_bytes(decompressed_trailer.read(W[0]), "big")
                 field_2 = int.from_bytes(decompressed_trailer.read(W[1]), "big")
@@ -83,14 +95,31 @@ class PDFParser:
                 if field_1 == 1:
                     ExtractedXRef.table.append(XrefEntry(field_2, field_3, "n"))
                 if field_1 == 2:
-                    compressed_objects.append((field_2, field_3))
+                    compressed_objects[field_2].append(field_3)
 
-            self.xRef+ ExtractedXRef
-            self.compressed_objects = compressed_objects
-            # TODO Trailer Extraction from dict
+            trailer = {b"/Size": bytes(str(len(ExtractedXRef)), "utf-8"),
+                       b"/Root": XRefDict[b"/Root"]}
+            self.trailer = PDFDict(trailer)
 
+            if b"/Prev" in XRefDict:
+                xref_address = int(XRefDict[b"/Prev"])
+                self.xRefExtractor(xref_address)
+
+            self.xRef += ExtractedXRef
+            self.compressed_objects.update(compressed_objects)
+        # TODO Dynamically create PDFTrailler
+
+
+    def unpack_compressed_objects(self):
+        for key in self.compressed_objects.keys():
+            object_stream = self.pdfObjects[key]
+            new_items = PDFObjectStreamParser(object_stream).extract()
+            self.pdfObjects.update(new_items)
+        self.trailer[b"/Size"] = bytes(str(len(self.pdfObjects.keys())), "utf-8")
 
     def trailer_parser(self):
+        if self.trailer:  # Trailer was parsed somewhere already
+            return self.trailer
         self.trailerStart = self.file.tell()
         content = self.file.read(self.trailer_end - 10 - self.trailerStart)
         trailer_dict = classify_steam(ObjectIter(content))
@@ -112,6 +141,8 @@ class PDFParser:
         Moves the pointer to the start of the object number
         """
         currentChar = self.file.read(1)
+        if (currentChar == b""):
+            raise Exception("NullObject")
         if currentChar.isdigit():
             self.file.seek(-2, io.SEEK_CUR)
             return
@@ -121,11 +152,11 @@ class PDFParser:
             self.file.seek(-1, io.SEEK_CUR)
 
     def extract_object(self, number):
-        self.seek_object(number)
         inuse = self.xRef.table[number].in_use_entry
         if inuse == "f":
             self.skippedFree += 1
             raise AssertionError("Skipping free object Reference")
+        self.seek_object(number)
         inuse = "n"
         current_char = self.file.read(1)
         object_number = current_char
@@ -236,10 +267,17 @@ class PDFParser:
 
 
 if __name__ == '__main__':
-    pdf = PDFParser("test_pdfs/uebungsblatt1.pdf")
-    Object_stream = pdf.pdfObjects[14]
-    print(Object_stream)
+    pdf = PDFParser("test_pdfs/VL 3.pdf")
+    # pdf.file.seek(8521)
+    pdf.clone()
+    print(pdf.file.readline())
+    print(pdf.file.readline())
+    print(pdf.file.readline())
 
+    # pdf.extract_object(11)
+    # parser = PDFObjectStreamParser(object_stream).extract()
+    # pdf.clone()
+    # print(len(parser))
     # with open("test_pdfs/Python for Data Analysis, 2nd Edition.pdf","rb") as r:
     #     with open("Refrased.pdf","wb+") as w:
     #         file = r.read()

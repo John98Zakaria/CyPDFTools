@@ -1,1 +1,4 @@
-tqdm
+tqdm~=4.50.0
+pytest~=6.1.0
+PyPDF4~=1.27.0
+numpy~=1.19.2

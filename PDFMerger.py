@@ -1,5 +1,6 @@
 import time
 
+from PDFObjects import IndirectObjectRef
 from PDFParser import *
 
 class PDFMerger:

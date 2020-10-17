@@ -83,6 +83,9 @@ class PDFStream(Ibytable):
         self.stream_dict[key] = value
 
 
+    def __contains__(self, item):
+        return item in self.stream_dict
+
 class PDFObject(Ibytable):
     def __init__(self, stream_dict, object_number, object_rev, inuse):
         self.stream_dict = stream_dict
@@ -136,7 +139,7 @@ class XRefTable(Ibytable):
         self.table = self.parse_table(xref_table) if not parsed else xref_table
 
     def __add__(self, other):
-        self.table = self.table + other.table
+        return XRefTable(self.table + other.table,True)
 
     def __getitem__(self, item):
         return self.table[item]
