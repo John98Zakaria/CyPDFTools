@@ -135,6 +135,9 @@ class XRefTable(Ibytable):
 
     def __init__(self, xref_table: list, parsed=False):
         self.table = self.parse_table(xref_table) if not parsed else xref_table
+        # According to the pdf specification newer objects are appended to the file
+        # By sorting the list the only the newest version of the object is added to the object table
+        self.table.sort(key=lambda x:x.address)
 
     def __add__(self, other):
         return XRefTable(self.table + other.table, True)

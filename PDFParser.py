@@ -121,7 +121,7 @@ class PDFParser:
                 xref_address = int(XRefDict[b"/Prev"])
                 self.xRefExtractor(xref_address)
 
-            self.xRef += ExtractedXRef
+            self.xRef = ExtractedXRef + self.xRef
             self.compressed_objects.update(compressed_objects)
 
     def _unpack_compressed_objects(self):
@@ -150,8 +150,9 @@ class PDFParser:
         trailer_dict = classify_steam(object_parser)
         if b"/Prev" in trailer_dict:
             prevXref = int(trailer_dict[b"/Prev"])
+            print("Recursive")
             self.xRefExtractor(prevXref)
-            # other_dict:PDFDict = self.trailer_parser()
+            self._trailer_parser() # recursively parse the other trailer to update xref
             # trailer_dict = other_dict.update(trailer_dict)
 
         return trailer_dict
@@ -164,7 +165,7 @@ class PDFParser:
         """
         address = self.xRef.table[number].address
         self.file.seek(address, SEEK_SET)
-        self._findObjectStart()
+        self._findObjectStart()  # Some objects don't start exactly at the given address
 
     def _findObjectStart(self) -> None:
         """
@@ -296,7 +297,7 @@ class PDFParser:
         with open(path, "wb+")as f:
             f.write(b"%PDF-1.7\n")
             for pdfobject in tqdm(self.pdfObjects.values(), "Writing Objects"):
-                pos = str(f.tell())
+                pos = f.tell()
                 rev = str(pdfobject.object_rev)
                 inuse = pdfobject.inuse
                 newXrefTable.append(XrefEntry(pos, int(rev), str(inuse)))
@@ -312,7 +313,7 @@ class PDFParser:
     def _read_all_objects(self):
         object_store = {}
 
-        for objectIndex in tqdm(range(1, self.xRef.__len__()), "Reading Objects"):
+        for objectIndex in tqdm(range(0, self.xRef.__len__()), "Reading Objects"):
             try:
                 item = self.extract_object(objectIndex)
                 object_number = item.object_number
@@ -335,12 +336,9 @@ class PDFParser:
 
 
 if __name__ == '__main__':
-    pdf = PDFParser("/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_04_Reguläre_Sprachen_Endliche_Automaten_Anmerkungen.pdf")
-    # pdf.file.seek(8521)
-    indecies  = pdf.get_pages()
-    print(pdf.getFromPDFDict(193))
-    print(indecies)
-    print(pdf.get_page_root())
+    pdf = PDFParser("test_pdfs/Bad_pdfs/FSB_03_Formale_Sprachen_und_Grammatiken_Anmerkungen.pdf")
+
+    pdf.save("out.pdf")
     # for i in indecies:
     #     print(pdf.getFromPDFDict(i.objectref))
 
