@@ -181,5 +181,8 @@ class XRefTable(Ibytable):
             out_string += f"{str(entry.address).zfill(10)} {str(entry.revision).zfill(5)} {entry.in_use_entry} \n"
         return out_string
 
+    def __bytes__(self):
+        return self.__str__().encode("utf-8")
+
     def __repr__(self):
         return self.__str__()

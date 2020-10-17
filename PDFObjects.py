@@ -110,6 +110,9 @@ class PDFDict(Ibytable):
             if issubclass(type(value), Ibytable):
                 value.offset_references(offset)
 
+    def update(self, other):
+        self.data.update(other.data)
+
     def __contains__(self, item):
         return item in self.data
 

@@ -18,14 +18,15 @@ def png_algorithmPipeline(decoded_stream: bytes, number_of_columns: int, algorit
     if algorithm_id == 10:  # png was decoded with the none filter nothing to be done
         return decoded_stream
 
-    algorithm_id = algorithm_id - 10 if algorithm_id > 10 else algorithm_id  # convert pdf png algorithm number to standard
+    # convert pdf png algorithm number to standard
+    algorithm_id = algorithm_id - 10 if algorithm_id > 10 else algorithm_id
     filter_algorithms = {1: reverse_subFilter,
                          2: reverse_upFilter,
                          3: reverse_averageFilter,
                          4: reverse_paethFilter}
-    appropriate_algorithm = filter_algorithms[algorithm_id]
-    reshaped_steam = reshape_toMatrix(decoded_stream, number_of_columns)
-    applied_alg_steam = appropriate_algorithm(reshaped_steam)
+
+    reshaped_stream = reshape_toMatrix(decoded_stream, number_of_columns)
+    applied_alg_steam = filter_algorithms[algorithm_id](reshaped_stream)
 
     return matrix_toBytes(applied_alg_steam)
 
@@ -115,7 +116,6 @@ if __name__ == '__main__':
     encoding_free = reverse_upFilter(xref_encoded)
 
     print(encoding_free)
-    bts = b""
     bts = matrix_toBytes(encoding_free)
 
     print(decode_XRef(bts, [1, 2, 1]))
