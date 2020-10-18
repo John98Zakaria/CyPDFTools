@@ -1,4 +1,4 @@
-cdef readonly bytes SEPERATORS = b"\\/[]<>()\t\n\r"
+cdef bytes SEPERATORS = b"\\/[]<>()\t\n\r"
 
 from io import BytesIO, SEEK_CUR, SEEK_SET, SEEK_END
 

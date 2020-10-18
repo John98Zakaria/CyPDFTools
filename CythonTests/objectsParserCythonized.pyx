@@ -1,7 +1,7 @@
 from utillsCythonized cimport ObjectIter
 from PDFObjects import *
 
-cdef readonly bytes SEPERATORS = b"\\/[]<>() \t\n"
+cdef bytes SEPERATORS = b"\\/[]<>() \t\n"
 
 
 cdef bytes extract_name(ObjectIter stream):

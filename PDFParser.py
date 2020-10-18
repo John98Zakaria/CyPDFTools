@@ -2,8 +2,8 @@ from PDFObjects import IndirectObjectRef
 from PDFStructureObjects import *
 import re
 # from objectsParser import parse_stream
-from utillsCythonized import ObjectIter
-from objectsParserCythonized import parse_stream
+from CythonTests.utillsCythonized import ObjectIter
+from CythonTests.objectsParserCythonized import parse_stream
 from tqdm import tqdm
 
 class PDFParser:
@@ -156,7 +156,7 @@ if __name__ == '__main__':
 
     import time
     start = time.time()
-    pdf = PDFParser("test_pdfs/PDF-Specifications.pdf")
+    pdf = PDFParser("test_pdfs/ProvenGood/PDF-Specifications.pdf")
 
     # print(pdf.extract_object(4191))
     # pdf.file.seek(2441891)
