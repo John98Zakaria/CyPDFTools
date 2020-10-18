@@ -1,13 +1,28 @@
 import time
-
-from PDFObjects import IndirectObjectRef
-from PDFParser import *
+from concurrent import futures
+from multiprocessing import cpu_count
+from PDFObjects import *
+from PDFStructureObjects import *
+from PDFParser import PDFParser
 
 
 class PDFMerger:
     def __init__(self, pdfs):
         self.pdfFiles = pdfs
+        self.process_pdfs((pdf for pdf in pdfs if type(pdf) != PDFParser))
         self.objectCount = sum(len(pdf) for pdf in pdfs)
+
+    def process_pdfs(self, pdfs):
+        finished_pdfs = []
+        with futures.ProcessPoolExecutor(cpu_count()//2) as pool:
+            tasks = [pool.submit(PDFParser, pdf, True) for pdf in pdfs]
+            for task in futures.as_completed(tasks):
+                finished_pdfs.append(task.result())
+
+        for pdf in finished_pdfs:
+            pdf.()
+
+        self.pdfFiles = finished_pdfs
 
     def new_page_root(self):
         self.objectCount += 1
@@ -44,10 +59,10 @@ class PDFMerger:
 
         newXrefTable = [XrefEntry(0, 65535, "f")]
         with open(out_path, "wb+")as f:
-            f.write(b"%PDF-1.5\n")
-            for index, pdf in enumerate(self.pdfFiles):
+            f.write(b"%PDF-1.7\n")
+            for index, pdf in enumerate(self.pdfFiles, 1):
                 for object in tqdm(pdf.pdfObjects.values(), f"Writing Objects for {index}. pdf"):
-                    pos = str(f.tell())
+                    pos = f.tell()
                     rev = str(object.object_rev)
                     inuse = object.inuse
                     newXrefTable.append(XrefEntry(pos, int(rev), str(inuse)))
@@ -63,16 +78,23 @@ class PDFMerger:
 
 if __name__ == '__main__':
     start = time.time()
-    pdf1 = PDFParser("/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_01_Einführung.pdf")
-    pdf2 = PDFParser(
-        "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_02_Mathematische_Grundlagen_Anmerkungen.pdf")
+    # pdf1 = PDFParser("/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_01_Einführung.pdf")
+    # pdf2 = PDFParser(
+    #     "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_02_Mathematische_Grundlagen_Anmerkungen.pdf")
     # pdf3 = PDFParser(
     #     "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_03_Formale_Sprachen_und_Grammatiken_Anmerkungen.pdf")
-    pdf4 = PDFParser(
-        "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_04_Reguläre_Sprachen_Endliche_Automaten_Anmerkungen.pdf")
-    # pdf5 = PDFParser("/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_05_Weitere_Charakterisierungen_Regulärer_Sprachen_Anmerkungen.pdf")
+    # pdf4 = PDFParser(
+    #     "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_04_Reguläre_Sprachen_Endliche_Automaten_Anmerkungen.pdf")
+    # pdf5 = PDFParser(
+    #     "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_05_Weitere_Charakterisierungen_Regulärer_Sprachen_Anmerkungen.pdf")
+    # merger = PDFMerger([pdf1, pdf2, pdf3, pdf4, pdf5])
 
-    merger = PDFMerger([pdf1, pdf2,pdf4])
+    merger = PDFMerger(["/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_01_Einführung.pdf",
+                        "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_02_Mathematische_Grundlagen_Anmerkungen.pdf",
+                        "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_03_Formale_Sprachen_und_Grammatiken_Anmerkungen.pdf",
+                        "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_04_Reguläre_Sprachen_Endliche_Automaten_Anmerkungen.pdf",
+                        "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_05_Weitere_Charakterisierungen_Regulärer_Sprachen_Anmerkungen.pdf"
+                        ])
 
     merger.merge("BlattMerger.pdf")
     print(time.time() - start)
