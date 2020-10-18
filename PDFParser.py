@@ -14,7 +14,7 @@ class PDFParser:
     Parses a given PDF file
     """
 
-    def __init__(self, filePath):
+    def __init__(self, filePath, to_pickle=False):
         self.file = open(filePath, "rb")
         self.filePath = filePath
         self.trailer_end = 0
@@ -29,6 +29,16 @@ class PDFParser:
         self.trailer = self._trailer_parser()
         self.pdfObjects = self._read_all_objects()
         self._unpack_compressed_objects()
+        if to_pickle:
+            self.file.close()
+            self.file = BytesIO(b"")
+            for item in filter(lambda x: type(x) == PDFStream, pdf.pdfObjects.values()):
+                item.file = BytesIO(b"")
+
+    def reload_file(self):
+        self.file = open(self.filePath, "rb")
+        for item in filter(lambda x: type(x) == PDFStream, pdf.pdfObjects.values()):
+            item.file = self.file
 
     def _extractXrefAddress(self):
         self.file.seek(-3, SEEK_END)
@@ -85,7 +95,6 @@ class PDFParser:
             if b"/Filter" in XRefDict:
                 if XRefDict[b"/Filter"] == b"/FlateDecode":
                     trailer_stream = zlib.decompress(trailer_stream)
-
 
                 else:
                     raise AssertionError("Only FlateDecode is supported")
@@ -152,7 +161,7 @@ class PDFParser:
             prevXref = int(trailer_dict[b"/Prev"])
             print("Recursive")
             self.xRefExtractor(prevXref)
-            self._trailer_parser() # recursively parse the other trailer to update xref
+            self._trailer_parser()  # recursively parse the other trailer to update xref
             # trailer_dict = other_dict.update(trailer_dict)
 
         return trailer_dict
@@ -336,10 +345,10 @@ class PDFParser:
 
 
 if __name__ == '__main__':
-    pdf = PDFParser("test_pdfs/Bad_pdfs/FSB_03_Formale_Sprachen_und_Grammatiken_Anmerkungen.pdf")
+    pdf = PDFParser("test_pdfs/ProvenGood/VL 4.pdf")
 
     pdf.save("out.pdf")
-    # for i in indecies:
+    # for i in indices:
     #     print(pdf.getFromPDFDict(i.objectref))
 
     pdf.close()
