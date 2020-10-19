@@ -9,7 +9,7 @@ from collections import defaultdict
 import zlib
 
 
-class PDFParser:
+class PDFFile:
     """
     Parses a given PDF file
     """
@@ -32,12 +32,12 @@ class PDFParser:
         if to_pickle:
             self.file.close()
             self.file = BytesIO(b"")
-            for item in filter(lambda x: type(x) == PDFStream, pdf.pdfObjects.values()):
+            for item in filter(lambda x: type(x) == PDFStream, self.pdfObjects.values()):
                 item.file = BytesIO(b"")
 
     def reload_file(self):
         self.file = open(self.filePath, "rb")
-        for item in filter(lambda x: type(x) == PDFStream, pdf.pdfObjects.values()):
+        for item in filter(lambda x: type(x) == PDFStream, self.pdfObjects.values()):
             item.file = self.file
 
     def _extractXrefAddress(self):
@@ -289,10 +289,10 @@ class PDFParser:
 
     def __str__(self):
         return f"FilePath : {self.filePath}\n" \
-               f"{self.xRef}"
+               f"PDFObjects :{self.pdfObjects}"
 
     def __len__(self):
-        return len(self.xRef)
+        return len(self.pdfObjects.keys())
 
     def __repr__(self):
         return self.__str__()
@@ -345,8 +345,8 @@ class PDFParser:
 
 
 if __name__ == '__main__':
-    pdf = PDFParser("test_pdfs/ProvenGood/VL 4.pdf")
-
+    pdf = PDFFile("/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.003.pdf")
+    pdf.increment_references(10)
     pdf.save("out.pdf")
     # for i in indices:
     #     print(pdf.getFromPDFDict(i.objectref))

@@ -3,19 +3,19 @@ from concurrent import futures
 from multiprocessing import cpu_count
 from PDFObjects import *
 from PDFStructureObjects import *
-from PDFParser import PDFParser
+from PDFFile import PDFFile
 
 
 class PDFMerger:
     def __init__(self, pdfs):
         self.pdfFiles = pdfs
-        self.process_pdfs((pdf for pdf in pdfs if type(pdf) != PDFParser))
-        self.objectCount = sum(len(pdf) for pdf in pdfs)
+        self.process_pdfs((pdf for pdf in pdfs if type(pdf) != PDFFile))
+        self.objectCount = sum(len(pdf) for pdf in self.pdfFiles)
 
     def process_pdfs(self, pdfs):
         finished_pdfs = []
-        with futures.ProcessPoolExecutor(cpu_count()//2) as pool:
-            tasks = [pool.submit(PDFParser, pdf, True) for pdf in pdfs]
+        with futures.ProcessPoolExecutor(cpu_count() // 2) as pool:
+            tasks = [pool.submit(PDFFile, pdf, True) for pdf in pdfs]
             for task in futures.as_completed(tasks):
                 finished_pdfs.append(task.result())
 
@@ -88,13 +88,20 @@ if __name__ == '__main__':
     # pdf5 = PDFParser(
     #     "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_05_Weitere_Charakterisierungen_Regulärer_Sprachen_Anmerkungen.pdf")
     # merger = PDFMerger([pdf1, pdf2, pdf3, pdf4, pdf5])
-
-    merger = PDFMerger(["/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_01_Einführung.pdf",
-                        "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_02_Mathematische_Grundlagen_Anmerkungen.pdf",
-                        "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_03_Formale_Sprachen_und_Grammatiken_Anmerkungen.pdf",
-                        "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_04_Reguläre_Sprachen_Endliche_Automaten_Anmerkungen.pdf",
-                        "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_05_Weitere_Charakterisierungen_Regulärer_Sprachen_Anmerkungen.pdf"
+    # merger = PDFMerger(["/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_01_Einführung.pdf",
+    #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_02_Mathematische_Grundlagen_Anmerkungen.pdf",
+    #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_03_Formale_Sprachen_und_Grammatiken_Anmerkungen.pdf",
+    #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_04_Reguläre_Sprachen_Endliche_Automaten_Anmerkungen.pdf",
+    #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_05_Weitere_Charakterisierungen_Regulärer_Sprachen_Anmerkungen.pdf"
+    #                     ])
+    # huff1 = PDFParser("/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.002.pdf")
+    # huff2 = PDFParser("/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.003.pdf")
+    # merger = PDFMerger([huff1,huff2])
+    merger = PDFMerger(["/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.002.pdf",
+                        "/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.003.pdf",
+                        "/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.004.pdf",
+                        "/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.005.pdf",
                         ])
-
-    merger.merge("BlattMerger.pdf")
+    #
+    merger.merge("BlattMerger_Normal.pdf")
     print(time.time() - start)
