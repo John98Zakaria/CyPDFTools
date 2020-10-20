@@ -1,7 +1,7 @@
 from io import BytesIO, SEEK_CUR, SEEK_SET, SEEK_END
 from PDFObjectStreamParser import PDFObjectStreamParser
 from PDFObjectsParser import classify_steam
-from PDFObjects import PDFArray
+from PDFObjects import PDFArray, IndirectObjectRef
 from PDFStructureObjects import *
 from png_algorithm import png_algorithmPipeline
 from utils import ObjectIter
@@ -25,7 +25,7 @@ class PDFFile:
         self.trailer = []
         self.compressed_objects = {}
         self.xRef = XRefTable([], True)
-        self.xRefExtractor(self._extractXrefAddress())
+        self._xRefExtractor(self._extractXrefAddress())
         self.trailer = self._trailer_parser()
         self.pdfObjects = self._read_all_objects()
         self._unpack_compressed_objects()
@@ -59,7 +59,7 @@ class PDFFile:
         xrefAddress = int(xrefAddress[::-1])
         return xrefAddress
 
-    def xRefExtractor(self, xrefAddress) -> None:
+    def _xRefExtractor(self, xrefAddress) -> None:
         """
         Extracts XRef Table from the pdf
 
@@ -128,7 +128,7 @@ class PDFFile:
 
             if b"/Prev" in XRefDict:
                 xref_address = int(XRefDict[b"/Prev"])
-                self.xRefExtractor(xref_address)
+                self._xRefExtractor(xref_address)
 
             self.xRef = ExtractedXRef + self.xRef
             self.compressed_objects.update(compressed_objects)
@@ -160,7 +160,7 @@ class PDFFile:
         if b"/Prev" in trailer_dict:
             prevXref = int(trailer_dict[b"/Prev"])
             print("Recursive")
-            self.xRefExtractor(prevXref)
+            self._xRefExtractor(prevXref)
             self._trailer_parser()  # recursively parse the other trailer to update xref
             # trailer_dict = other_dict.update(trailer_dict)
 
@@ -254,6 +254,23 @@ class PDFFile:
         document_catalog_address = self.trailer[b"/Root"].objectref - self.offset
         return self.pdfObjects[document_catalog_address]
 
+    def has_outline(self):
+        return b"/Outlines" in self.get_document_catalog()
+
+    def get_outline(self) -> PDFObject:
+        outline_address = self.get_document_catalog()[b"/Outlines"]
+        return self.getFromPDFDict(outline_address.objectref)
+
+    def get_firstOutlineItem(self) -> PDFObject:
+        first_outline_address = self.get_outline()[b"/First"]
+        first_outline = self.getFromPDFDict(first_outline_address.objectref)
+        return first_outline
+
+    def get_lastOutlineItem(self) -> PDFObject:
+        last_outline_address = self.get_outline()[b"/Last"]
+        last_outline = self.getFromPDFDict(last_outline_address.objectref)
+        return last_outline
+
     def get_pages(self) -> list:
         """
         Gathers all pages
@@ -346,8 +363,9 @@ class PDFFile:
 
 if __name__ == '__main__':
     pdf = PDFFile("/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.003.pdf")
-    pdf.increment_references(10)
-    pdf.save("out.pdf")
+    pdf.has_outline()
+    # pdf.increment_references(10)
+    # pdf.save("out.pdf")
     # for i in indices:
     #     print(pdf.getFromPDFDict(i.objectref))
 

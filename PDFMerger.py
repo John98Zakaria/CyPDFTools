@@ -8,7 +8,7 @@ from PDFFile import PDFFile
 
 class PDFMerger:
     def __init__(self, pdfs):
-        self.pdfFiles = pdfs
+        self.pdfFiles: list[PDFFile] = pdfs
         self.process_pdfs((pdf for pdf in pdfs if type(pdf) != PDFFile))
         self.objectCount = sum(len(pdf) for pdf in self.pdfFiles)
 
@@ -41,8 +41,35 @@ class PDFMerger:
 
         self.pdfFiles[0].trailer[b"/Size"] = str(self.objectCount).encode("utf-8")
         self.pdfFiles[0].get_document_catalog()[b"/Pages"] = root_ref
-
+        self.merge_outline()
         return PDFObject(rootDict, self.objectCount, 0, "n")
+
+    def merge_outline(self):
+        """
+        Merges the pdf outline
+
+        """
+        pdfs_with_outline = [pdf for pdf in self.pdfFiles if pdf.has_outline()]
+        if not pdfs_with_outline:
+            return
+
+        root_pdf = pdfs_with_outline[0]
+        root_outline = root_pdf.get_outline()
+        root_outlineRef = IndirectObjectRef(root_outline.object_number,root_outline.object_rev)
+        self.pdfFiles[0].get_document_catalog()[b"/Outlines"] = root_outlineRef
+
+        if len(pdfs_with_outline) == 1:
+            return
+
+        for pdf1, pdf2 in zip(self.pdfFiles[:-1], self.pdfFiles[1:]):
+            outline1, outline2 = pdf1.get_lastOutlineItem(),pdf2.get_firstOutlineItem()
+            outline1[b"/Parent"] = root_outlineRef
+            outline1[b"/Next"] = outline2.get_address()
+            outline2[b"/Prev"] = outline1.get_address()
+
+        root_outline[b"/Last"] = pdfs_with_outline[-1].get_firstOutlineItem().get_address()
+
+        return
 
     def merge(self, out_path: str) -> None:
         """
@@ -55,7 +82,7 @@ class PDFMerger:
             pdf.increment_references(accumulated_offset)
             accumulated_offset += len(pdf)
 
-        self.pdfFiles[0].pdfObjects[self.objectCount] = (self.new_page_root())
+        self.pdfFiles[0].pdfObjects[self.objectCount] = self.new_page_root()
 
         newXrefTable = [XrefEntry(0, 65535, "f")]
         with open(out_path, "wb+")as f:

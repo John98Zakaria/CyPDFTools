@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from tqdm import tqdm
 
-from PDFObjects import PDFDict
+from PDFObjects import PDFDict, IndirectObjectRef
 from utils import Ibytable
 
 XrefEntry = namedtuple("XrefEntry", ["address", "revision", "in_use_entry"])
@@ -59,6 +59,9 @@ class PDFStream(Ibytable):
         self.stream_dict.offset_references(offset)
         self.object_number += offset
 
+    def get_address(self):
+        return IndirectObjectRef(self.object_number, self.object_rev)
+
     def __bytes__(self) -> bytes:
         """
         Converts the object and all the underlying objects to bytes
@@ -92,6 +95,9 @@ class PDFObject(Ibytable):
         self.object_rev = object_rev
         self.inuse = inuse
 
+    def get_address(self):
+        return IndirectObjectRef(self.object_number, self.object_rev)
+
     def read_stream(self):  # is there just for the state design pattern
         return b""
 
@@ -124,6 +130,9 @@ class PDFObject(Ibytable):
     def __getitem__(self, item):
         return self.stream_dict[item]
 
+    def __contains__(self, item):
+        return item in self.stream_dict
+
     def __setitem__(self, key, value):
         self.stream_dict[key] = value
 
@@ -137,7 +146,7 @@ class XRefTable(Ibytable):
         self.table = self.parse_table(xref_table) if not parsed else xref_table
         # According to the pdf specification newer objects are appended to the file
         # By sorting the list the only the newest version of the object is added to the object table
-        self.table.sort(key=lambda x:x.address)
+        self.table.sort(key=lambda x: x.address)
 
     def __add__(self, other):
         return XRefTable(self.table + other.table, True)

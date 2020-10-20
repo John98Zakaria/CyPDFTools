@@ -1,4 +1,4 @@
-# CyPDF - A user-friendly PDF Library for your basic needs
+# CyPDF - A PDF Library that suits your basic needs
 [![Documentation Status](https://readthedocs.org/projects/minipdfmerger/badge/?version=latest)](https://minipdfmerger.readthedocs.io/en/latest/?badge=latest)
 
 CyPDF is a fully documented PDF library written in augmented Cython for your basic PDF needs.
@@ -16,7 +16,6 @@ CyPDF is a fully documented PDF library written in augmented Cython for your bas
 ## Known Bugs
 * Encrypted PDFs can't be processed
 * PDFs with newline terminators other than "/n"
-* Document index isn't merged properly yet
 
 ## Bug Reporting
 Found a PDF that isn't properly functioning ?\
