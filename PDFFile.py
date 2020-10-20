@@ -1,12 +1,13 @@
+import zlib
+from collections import defaultdict
 from io import BytesIO, SEEK_CUR, SEEK_SET, SEEK_END
+
 from PDFObjectStreamParser import PDFObjectStreamParser
+from PDFObjects import PDFArray
 from PDFObjectsParser import classify_steam
-from PDFObjects import PDFArray, IndirectObjectRef
 from PDFStructureObjects import *
 from png_algorithm import png_algorithmPipeline
 from utils import ObjectIter
-from collections import defaultdict
-import zlib
 
 
 class PDFFile:
@@ -29,6 +30,7 @@ class PDFFile:
         self.trailer = self._trailer_parser()
         self.pdfObjects = self._read_all_objects()
         self._unpack_compressed_objects()
+        self.pages = []
         if to_pickle:
             self.file.close()
             self.file = BytesIO(b"")
@@ -160,6 +162,7 @@ class PDFFile:
         if b"/Prev" in trailer_dict:
             prevXref = int(trailer_dict[b"/Prev"])
             print("Recursive")
+            trailer_dict.data.pop(b"/Prev") # Cleanup
             self._xRefExtractor(prevXref)
             self._trailer_parser()  # recursively parse the other trailer to update xref
             # trailer_dict = other_dict.update(trailer_dict)
@@ -245,6 +248,14 @@ class PDFFile:
         """
         return self.pdfObjects[key - self.offset]
 
+    def removeFromPDFDict(self, key: int):
+        """
+        Removes object from pdf
+
+        :param key: object number
+        """
+        self.pdfObjects.pop(key - self.offset)
+
     def get_document_catalog(self):
         """
         Gets the document_catalog from the pdf
@@ -255,19 +266,38 @@ class PDFFile:
         return self.pdfObjects[document_catalog_address]
 
     def has_outline(self):
+        """
+        Checks if the document has an outline
+
+        """
         return b"/Outlines" in self.get_document_catalog()
 
-    def get_outline(self) -> PDFObject:
+    def get_RootOutline(self) -> PDFObject:
+        """
+        Gets the root outline object
+
+        :return: Outline PDFObject
+        """
         outline_address = self.get_document_catalog()[b"/Outlines"]
         return self.getFromPDFDict(outline_address.objectref)
 
     def get_firstOutlineItem(self) -> PDFObject:
-        first_outline_address = self.get_outline()[b"/First"]
+        """
+        Get the first actual OutlineItem
+
+        :return: First actual OutlineItem
+        """
+        first_outline_address = self.get_RootOutline()[b"/First"]
         first_outline = self.getFromPDFDict(first_outline_address.objectref)
         return first_outline
 
     def get_lastOutlineItem(self) -> PDFObject:
-        last_outline_address = self.get_outline()[b"/Last"]
+        """
+        Get the last actual OutlineItem
+
+        :return: Last actual OutlineItem
+        """
+        last_outline_address = self.get_RootOutline()[b"/Last"]
         last_outline = self.getFromPDFDict(last_outline_address.objectref)
         return last_outline
 
@@ -277,6 +307,8 @@ class PDFFile:
 
         :return: list of pages
         """
+        if self.pages:
+            return self.pages
 
         def getChildrenPages(pages: PDFArray):
             pages_arr = []
@@ -290,6 +322,30 @@ class PDFFile:
 
         page_root = self.get_page_root()
         return getChildrenPages(page_root[b"/Kids"])
+
+    def rotate_page(self, index: int, rotation: int):
+        """
+        Rotates the given page
+
+        :param index: Page index
+        :param rotation: Degrees
+
+        """
+        page = pdf.getFromPDFDict(self.get_pages()[index - 1].objectref)
+        if b"/Rotate" in page:
+            page[b"/Rotate"] = str(int(page[b"/Rotate"]) + rotation).encode("utf-8")
+        else:
+            page[b"/Rotate"] = str(rotation).encode("utf-8")
+
+    def rotate_all(self, rotation: int):
+        """
+        Rotates all pages
+
+        :param rotation: Degrees
+        """
+        pages = self.get_pages()
+        for index, _ in enumerate(pages, 1):
+            self.rotate_page(index, rotation)
 
     def get_page_root(self):
         """
@@ -362,8 +418,9 @@ class PDFFile:
 
 
 if __name__ == '__main__':
-    pdf = PDFFile("/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.003.pdf")
-    pdf.has_outline()
+    pdf = PDFFile("/home/jn98zk/Projects/CyPDFTools/test_pdfs/Bad_pdfs/")
+    pdf.save("LinearAlgebraDoneRight.pdf")
+    # pdf.has_outline()
     # pdf.increment_references(10)
     # pdf.save("out.pdf")
     # for i in indices:

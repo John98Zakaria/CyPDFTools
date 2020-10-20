@@ -53,23 +53,21 @@ class PDFMerger:
         if not pdfs_with_outline:
             return
 
-        root_pdf = pdfs_with_outline[0]
-        root_outline = root_pdf.get_outline()
-        root_outlineRef = IndirectObjectRef(root_outline.object_number,root_outline.object_rev)
+        root_pdf = pdfs_with_outline[0]  # Use first pdf as root
+        root_outline = root_pdf.get_RootOutline()
+        root_outlineRef = IndirectObjectRef(root_outline.object_number, root_outline.object_rev)
         self.pdfFiles[0].get_document_catalog()[b"/Outlines"] = root_outlineRef
 
         if len(pdfs_with_outline) == 1:
             return
 
         for pdf1, pdf2 in zip(self.pdfFiles[:-1], self.pdfFiles[1:]):
-            outline1, outline2 = pdf1.get_lastOutlineItem(),pdf2.get_firstOutlineItem()
-            outline1[b"/Parent"] = root_outlineRef
-            outline1[b"/Next"] = outline2.get_address()
+            outline1, outline2 = pdf1.get_lastOutlineItem(), pdf2.get_firstOutlineItem()
+            outline1[b"/Parent"] = root_outlineRef  # Correct parent to root
+            outline1[b"/Next"] = outline2.get_address()  # Correct linked list
             outline2[b"/Prev"] = outline1.get_address()
 
         root_outline[b"/Last"] = pdfs_with_outline[-1].get_firstOutlineItem().get_address()
-
-        return
 
     def merge(self, out_path: str) -> None:
         """
@@ -124,11 +122,25 @@ if __name__ == '__main__':
     # huff1 = PDFParser("/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.002.pdf")
     # huff2 = PDFParser("/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.003.pdf")
     # merger = PDFMerger([huff1,huff2])
-    merger = PDFMerger(["/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.002.pdf",
-                        "/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.003.pdf",
-                        "/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.004.pdf",
-                        "/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.005.pdf",
-                        ])
+    # merger = PDFMerger(["/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.002.pdf",
+    #                     "/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.003.pdf",
+    #                     "/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.004.pdf",
+    #                     "/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.005.pdf",
+    #                     ])
     #
-    merger.merge("BlattMerger_Normal.pdf")
+
+    # merger = PDFMerger(["/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/MP2Woche01.pdf",
+    #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/MP2Woche02.pdf",
+    #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/MP2Woche03.pdf",
+    #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/MP2Woche04.pdf",
+    #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/MP2Woche05.pdf",
+    #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/MP2Woche06.pdf",
+    #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/MP2Woche07.pdf",
+    #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/MP2Woche08.pdf",
+    #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/MP2Woche09.pdf"])
+
+    merger = PDFMerger(
+        ["/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/Grundwissen Mathematikstudium.pdf",
+         "/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/LinearAlgebraDoneRight 3rd Ed.pdf"])
+    merger.merge("MFP2 Books Merged.pdf")
     print(time.time() - start)
