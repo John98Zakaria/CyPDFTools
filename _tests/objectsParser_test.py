@@ -84,8 +84,12 @@ class TestDict:
     def test_simple(self):
         t1 = b"<</Type /Test/Length 2>>"
         t2 = b"<<>>"
+        t3 = b"<< >>"
         assert classify_steam(ObjectIter(t1)) == PDFDict({b"/Type": b"/Test", b"/Length": b"2"})
         assert classify_steam(ObjectIter(t2)) == PDFDict({})
+        assert classify_steam(ObjectIter(t3)) == PDFDict({})
+
+
 
     def test_random(self):
         t1 = (

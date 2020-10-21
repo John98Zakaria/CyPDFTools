@@ -12,7 +12,7 @@ from utils import ObjectIter
 
 class PDFFile:
     """
-    Parses a given PDF file
+    Loads the PDFFile to modify it
     """
 
     def __init__(self, filePath, to_pickle=False):
@@ -82,7 +82,6 @@ class PDFFile:
 
             self.xRef = self.xRef + XRefTable(x_ref_table)
             self.trailerStart = self.file.tell()
-            return
         elif xref_type.isdigit():  # Xref is stored in a stream PDF1.5+
             self.file.seek(-1, SEEK_CUR)  # unconsume the letter that was just read
             self.xRef.table.append(XrefEntry(xrefAddress, 0, "n"))
@@ -124,7 +123,7 @@ class PDFFile:
                 if field_1 == 2:
                     compressed_objects[field_2].append(field_3)
 
-            trailer = {b"/Size": bytes(str(len(ExtractedXRef)), "utf-8"),
+            trailer = {b"/Size": str(len(ExtractedXRef)+compressed_objects.__len__()).encode("utf-8"),
                        b"/Root": XRefDict[b"/Root"]}
             self.trailer = PDFDict(trailer)
 
@@ -140,7 +139,7 @@ class PDFFile:
         Extracts all pdf objects from all object streams found in the XRefTable
 
         """
-        for key in self.compressed_objects.keys():
+        for key in self.compressed_objects:
             object_stream = self.pdfObjects[key]
             new_items = PDFObjectStreamParser(object_stream).extract()
             self.pdfObjects.update(new_items)
@@ -162,7 +161,7 @@ class PDFFile:
         if b"/Prev" in trailer_dict:
             prevXref = int(trailer_dict[b"/Prev"])
             print("Recursive")
-            trailer_dict.data.pop(b"/Prev") # Cleanup
+            trailer_dict.data.pop(b"/Prev")  # Cleanup
             self._xRefExtractor(prevXref)
             self._trailer_parser()  # recursively parse the other trailer to update xref
             # trailer_dict = other_dict.update(trailer_dict)
@@ -189,7 +188,6 @@ class PDFFile:
             raise Exception("NullObject")
         if currentChar.isdigit():
             self.file.seek(-2, SEEK_CUR)
-            return
         else:
             while not currentChar.isdigit():
                 currentChar = self.file.read(1)
@@ -418,8 +416,9 @@ class PDFFile:
 
 
 if __name__ == '__main__':
-    pdf = PDFFile("/home/jn98zk/Projects/CyPDFTools/test_pdfs/Bad_pdfs/")
-    pdf.save("LinearAlgebraDoneRight.pdf")
+    pdf = PDFFile("/media/jn98zk/318476C83114A23B/Uni-Mainz/Statistik/Stochastik für Einsteiger Eine Einführung in die faszinierende Welt des Zufalls. Mit über 220 Übungsaufgaben und Lösungen, 8. Auflage by Norbert Henze (z-lib.org).pdf")
+    pdf.get_pages()
+    pdf.save("DigitalDesign.pdf")
     # pdf.has_outline()
     # pdf.increment_references(10)
     # pdf.save("out.pdf")

@@ -1,6 +1,5 @@
-SEPERATORS = b"\\/[]<>()\t\n\r"
-
 from io import BytesIO, SEEK_CUR, SEEK_END
+SEPERATORS = b"\\/[]<>()\t\n\r"
 
 
 class ObjectIter:
@@ -84,7 +83,6 @@ class ObjectIter:
             if self.stream.tell() <= self.length:
                 self.stream.read(1)
                 nextbyte = self.peek(1)
-                continue
             else:
                 raise IndexError(f"{item} not found")
 
@@ -104,7 +102,6 @@ class ObjectIter:
             return
 
         for i in self:
-
             if not i.isspace():
                 self.prev()
                 return
@@ -155,13 +152,13 @@ class Ibytable:
 
 
     def __bytes__(self):
-        raise NotImplemented
+        raise NotImplementedError("__bytes__ was not implemented")
 
     def __eq__(self, other):
-        raise NotImplemented
+        raise NotImplementedError("__eq__ was not implemented")
 
     def offset_references(self, offset: int):
-        raise NotImplemented
+        raise NotImplementedError("offset_references was not implemented")
 
     def __repr__(self):
         return self.__str__()

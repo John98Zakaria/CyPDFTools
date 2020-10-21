@@ -8,11 +8,11 @@ from PDFFile import PDFFile
 
 class PDFMerger:
     def __init__(self, pdfs):
-        self.pdfFiles: list[PDFFile] = pdfs
-        self.process_pdfs((pdf for pdf in pdfs if type(pdf) != PDFFile))
+        self.pdfFiles = self.process_pdfs(pdfs)
         self.objectCount = sum(len(pdf) for pdf in self.pdfFiles)
 
-    def process_pdfs(self, pdfs):
+    @staticmethod
+    def process_pdfs(pdfs):
         finished_pdfs = []
         with futures.ProcessPoolExecutor(cpu_count() // 2) as pool:
             tasks = [pool.submit(PDFFile, pdf, True) for pdf in pdfs]
@@ -22,7 +22,7 @@ class PDFMerger:
         for pdf in finished_pdfs:
             pdf.reload_file()
 
-        self.pdfFiles = finished_pdfs
+        return finished_pdfs
 
     def new_page_root(self):
         self.objectCount += 1
@@ -119,9 +119,9 @@ if __name__ == '__main__':
     #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_04_Reguläre_Sprachen_Endliche_Automaten_Anmerkungen.pdf",
     #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_05_Weitere_Charakterisierungen_Regulärer_Sprachen_Anmerkungen.pdf"
     #                     ])
-    # huff1 = PDFParser("/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.002.pdf")
-    # huff2 = PDFParser("/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.003.pdf")
-    # merger = PDFMerger([huff1,huff2])
+    huff1 = PDFFile("/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.002.pdf")
+    huff2 = PDFFile("/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.003.pdf")
+    merger = PDFMerger([huff1,huff2])
     # merger = PDFMerger(["/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.002.pdf",
     #                     "/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.003.pdf",
     #                     "/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.004.pdf",
@@ -139,8 +139,8 @@ if __name__ == '__main__':
     #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/MP2Woche08.pdf",
     #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/MP2Woche09.pdf"])
 
-    merger = PDFMerger(
-        ["/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/Grundwissen Mathematikstudium.pdf",
-         "/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/LinearAlgebraDoneRight 3rd Ed.pdf"])
-    merger.merge("MFP2 Books Merged.pdf")
+    # merger = PDFMerger(
+    #     ["/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/Grundwissen Mathematikstudium.pdf",
+    #      "/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/LinearAlgebraDoneRight 3rd Ed.pdf"])
+    merger.merge("HuffMerged.pdf")
     print(time.time() - start)

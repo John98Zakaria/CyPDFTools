@@ -103,7 +103,7 @@ def classify_steam(stream_iter: ObjectIter, letter=None):
     elif letter == b"[":
         value = extract_array(stream_iter)
 
-    elif letter.isdigit() or letter == b"-":
+    elif letter.isdigit() or letter == b"-" or letter == b".":
         value = parse_numeric(letter, stream_iter)
 
     elif letter == b"<":
@@ -139,7 +139,7 @@ def parse_dictionary(pdf_stream) -> PDFDict:
     """
     object_dict = dict()
     streamIter = ObjectIter(pdf_stream) if type(pdf_stream) != ObjectIter else pdf_stream
-    streamIter.move_to(b"/")
+    streamIter.skip_space()
     for letter in streamIter:
         if letter == b">":
             letter = next(streamIter)
@@ -181,12 +181,19 @@ def extract_array(stream: ObjectIter) -> PDFArray:
 
 
 if __name__ == '__main__':  # pragma: no cover
-    simple4 = b"[ 484  9874 618 798]"
+    # simple4 = b"[ 484  9874 618 798]"
+    #
+    # classify_steam(ObjectIter(simple4))
+    #
+    # w = b'<< /ID [(\xa3\xa2\x86\x93\x8f \xdc\x91\xfeZ\x9f]\xb7\x91xM) (\xa3\xa2\x86\x93\x8f \xdc\x91\xfeZ\x9f]\xb7\x91xM)] /Info 409 0 R /Prev 601302 /Root 408 0 R /Size 670 >>\r\ns'
+    # print(classify_steam(ObjectIter(w)))
 
-    classify_steam(ObjectIter(simple4))
+    # w = b'<< /pgf@CA1 << /CA 1 >> /pgf@ca1 << /ca 1 >> /pgf@CA0.1 << /CA 0.1 >> /pgf@ca0.1 << /ca 0.1 >> /pgf@CA0.3 << /CA 0.3 >> /pgf@ca0.3 << /ca 0.3 >> /pgf@CA.3 << /CA .3 >> /pgf@ca.3 << /ca .3 >> /pgf@CA.6 << /CA .6 >> /pgf@ca.6 << /ca .6 >> /pgf@CA.8 << /CA .8 >> /pgf@ca.8 << /ca .8 >> /pgf@CA0.4 << /CA 0.4 >> /pgf@ca0.4 << /ca 0.4 >>>>\n'
+    #
+    # print(classify_steam(ObjectIter(w)))
 
-    w = b'<< /ID [(\xa3\xa2\x86\x93\x8f \xdc\x91\xfeZ\x9f]\xb7\x91xM) (\xa3\xa2\x86\x93\x8f \xdc\x91\xfeZ\x9f]\xb7\x91xM)] /Info 409 0 R /Prev 601302 /Root 408 0 R /Size 670 >>\r\ns'
-    print(classify_steam(ObjectIter(w)))
+    r = b"<</Contents 2 0 R/CropBox[0.0 0.0 375.023 636.093]/MediaBox[0.0 0.0 375.023 636.093]/Parent 2276 0 R/Resources<</ExtGState<</GS1 1780 0 R>>/Font<</F2 1777 0 R>>/ProcSet[/PDF/Text/ImageB/ImageC/ImageI]/XObject<<>>>>/Rotate 0/Thumb 1913 0 R/TrimBox[0.0 0.0 375.023 636.093]/Type/Page>>"
+    print(classify_steam(ObjectIter(r)))
 
     ##Bad table
     # t1 = b"""/Type/Annot/Border[ 0 0 0]/Dest[ 4863 0 R/XYZ 76.450073 383.27719 0]/F 4/Rect[ 167.25 565.5 447.75 582]/Subtype/Link>>"""
