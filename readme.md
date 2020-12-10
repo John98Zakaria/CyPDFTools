@@ -6,6 +6,7 @@ CyPDF is a fully documented PDF library written in augmented Cython for your bas
 ---
 ## Features
 * A progress bar showing you the current state of processing thanks to [tqdm](https://tqdm.github.io/)
+* Deletion of pages
 * Merging multiple PDF files into one cohesive file
 * Rotate the entire document or single pages
 * [TODO] Create PDF file from images
@@ -15,6 +16,7 @@ CyPDF is a fully documented PDF library written in augmented Cython for your bas
 ## Known Bugs
 * Encrypted PDFs can't be processed
 * PDFs with newline terminators other than "/n"
+* Named destinations aren't handled properly
 
 
 

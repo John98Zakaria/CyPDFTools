@@ -35,7 +35,7 @@ class PDFObjectStreamParser:
             number_size = (object_1[0], object_2[1] - object_1[1])
             num_size.append(number_size)
 
-        last_object = (num_offset_pairs[-1][0], \
+        last_object = (num_offset_pairs[-1][0],
                        self.stream.getbuffer().nbytes - self.stream_offset - num_offset_pairs[-1][1])
         num_size.append(last_object)
         return num_size

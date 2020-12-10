@@ -175,11 +175,8 @@ class XRefTable(Ibytable):
             return XrefEntry(int(parsed_entry.group(1)), int(parsed_entry.group(2)),
                              str(parsed_entry.group(3), "utf-8"))
 
-        i = 0
-        for value in tqdm(table, "Parsing Xref"):
-            v = parse_entry(value)
-            table[i] = v
-            i += 1
+        for index, value in enumerate(tqdm(table, "Parsing Xref")):
+            table[index] = parse_entry(value)
         return table
 
     def __len__(self):

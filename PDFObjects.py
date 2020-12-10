@@ -67,6 +67,9 @@ class PDFArray(Ibytable):
     def __getitem__(self, item):
         return self.data[item]
 
+    def remove(self,item):
+        self.data.remove(item)
+
     def offset_references(self, offset: int):
         """
         Increments the reference objects inside the data structure

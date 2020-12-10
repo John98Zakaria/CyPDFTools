@@ -1,6 +1,6 @@
 from PDFObjectsParser import *
 import pytest
-
+from utils import ObjectIter
 
 class TestArray:
     def test_simple(self):

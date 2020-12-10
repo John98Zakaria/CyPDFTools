@@ -12,7 +12,13 @@ class PDFMerger:
         self.objectCount = sum(len(pdf) for pdf in self.pdfFiles)
 
     @staticmethod
-    def process_pdfs(pdfs):
+    def process_pdfs(pdfs)->list:
+        """
+        Divides the task of parsing each PDF on multiple cores
+
+        :param pdfs: file paths
+        :return: PDFFiles
+        """
         finished_pdfs = []
         with futures.ProcessPoolExecutor(cpu_count() // 2) as pool:
             tasks = [pool.submit(PDFFile, pdf, True) for pdf in pdfs]
@@ -24,9 +30,15 @@ class PDFMerger:
 
         return finished_pdfs
 
+
     def new_page_root(self):
+        """
+        Creates a new page root containing all merged pages
+
+        """
         self.objectCount += 1
-        root_ref = IndirectObjectRef(self.objectCount, 0)
+        root_obj_num = self.objectCount +100
+        root_ref = IndirectObjectRef(root_obj_num, 0)
         page_count = 0
         kids = []
         for pdf in self.pdfFiles:
@@ -39,10 +51,10 @@ class PDFMerger:
                             b"/Kids": PDFArray(kids),
                             b"/Count": str(page_count).encode("utf-8")})
 
-        self.pdfFiles[0].trailer[b"/Size"] = str(self.objectCount).encode("utf-8")
+        self.pdfFiles[0].trailer[b"/Size"] = str(root_obj_num).encode("utf-8")
         self.pdfFiles[0].get_document_catalog()[b"/Pages"] = root_ref
         self.merge_outline()
-        return PDFObject(rootDict, self.objectCount, 0, "n")
+        return PDFObject(rootDict,root_obj_num, 0, "n")
 
     def merge_outline(self):
         """
@@ -119,9 +131,9 @@ if __name__ == '__main__':
     #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_04_Reguläre_Sprachen_Endliche_Automaten_Anmerkungen.pdf",
     #                     "/media/jn98zk/318476C83114A23B/Uni-Mainz/FormaleSprachen/FSB_05_Weitere_Charakterisierungen_Regulärer_Sprachen_Anmerkungen.pdf"
     #                     ])
-    huff1 = PDFFile("/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.002.pdf")
-    huff2 = PDFFile("/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.003.pdf")
-    merger = PDFMerger([huff1,huff2])
+    # huff1 = PDFFile("/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.002.pdf")
+    # huff2 = PDFFile("/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.003.pdf")
+    # merger = PDFMerger([huff1,huff2])
     # merger = PDFMerger(["/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.002.pdf",
     #                     "/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.003.pdf",
     #                     "/home/jn98zk/Projects/CyPDFTools/test_pdfs/9783446457942.004.pdf",
@@ -142,5 +154,10 @@ if __name__ == '__main__':
     # merger = PDFMerger(
     #     ["/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/Grundwissen Mathematikstudium.pdf",
     #      "/media/jn98zk/318476C83114A23B/Uni-Mainz/Mathe Fur Physiker 2/LinearAlgebraDoneRight 3rd Ed.pdf"])
-    merger.merge("HuffMerged.pdf")
+
+    merger = PDFMerger(["/media/jn98zk/318476C83114A23B/Blatt 04 John1.pdf",
+                        "/media/jn98zk/318476C83114A23B/Blatt 04 part2.pdf"])
+
+    merger.pdfFiles[0].delete_page(6)
+    merger.merge("KT Abgabe.pdf")
     print(time.time() - start)

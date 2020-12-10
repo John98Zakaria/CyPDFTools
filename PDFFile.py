@@ -2,6 +2,7 @@ import zlib
 from collections import defaultdict
 from io import BytesIO, SEEK_CUR, SEEK_SET, SEEK_END
 
+from PDFSettings import *
 from PDFObjectStreamParser import PDFObjectStreamParser
 from PDFObjects import PDFArray
 from PDFObjectsParser import classify_steam
@@ -22,6 +23,7 @@ class PDFFile:
         self.trailerStart = 0
         self.skippedFree = 0
         self.offset = 0
+        self.deletedItems = 0
         self.pdfObjects = {}
         self.trailer = []
         self.compressed_objects = {}
@@ -123,7 +125,7 @@ class PDFFile:
                 if field_1 == 2:
                     compressed_objects[field_2].append(field_3)
 
-            trailer = {b"/Size": str(len(ExtractedXRef)+compressed_objects.__len__()).encode("utf-8"),
+            trailer = {b"/Size": str(len(ExtractedXRef) + compressed_objects.__len__()).encode("utf-8"),
                        b"/Root": XRefDict[b"/Root"]}
             self.trailer = PDFDict(trailer)
 
@@ -167,6 +169,40 @@ class PDFFile:
             # trailer_dict = other_dict.update(trailer_dict)
 
         return trailer_dict
+
+    def delete_page(self, page_number: int):
+        """
+        Deletes the given page
+
+        :param page_number: Number of the page
+        """
+
+        pages = self.get_pages()  # Gets all pages in a linear fashion to allow addressing pages by index
+        page_number = page_number - 1 - self.deletedItems  # TODO Use dicts as removing pages ruins indices
+        target_page, target_ref = pages[page_number].objectref, pages[page_number]
+        page_parentRef = self.getFromPDFDict(target_page)[b"/Parent"]
+        page_parent = self.getFromPDFDict(page_parentRef.objectref)
+        page_parent[b"/Kids"].data.remove(target_ref)
+        page_parent[b"/Count"] = str(int(page_parent[b"/Count"]) - 1).encode("utf-8")
+
+        self.pages.pop(page_number)
+        self.delete_object(target_page)
+        self.get_page_root()[b"/Count"] = str(int(self.get_page_root()[b"/Count"]) - 1).encode("utf-8")
+
+    def delete_object(self, object_number: int):
+        """
+        Removes an object from the objects dict
+        
+        :param object_number: Object number
+        """
+        self.pdfObjects.pop(object_number - self.offset)
+        self.deletedItems += 1
+
+    def set_PageMode(self, mode: PageMode):
+        self.get_document_catalog()[b"/PageMode"] = mode
+
+    def set_PageLayout(self, layout: PageLayout):
+        self.get_document_catalog()[b"/PageLayout"] = layout
 
     def seek_object(self, number: int) -> None:
         """
@@ -319,7 +355,8 @@ class PDFFile:
             return pages_arr
 
         page_root = self.get_page_root()
-        return getChildrenPages(page_root[b"/Kids"])
+        self.pages = getChildrenPages(page_root[b"/Kids"])
+        return self.pages
 
     def rotate_page(self, index: int, rotation: int):
         """
@@ -363,7 +400,7 @@ class PDFFile:
                f"PDFObjects :{self.pdfObjects}"
 
     def __len__(self):
-        return len(self.pdfObjects.keys())
+        return len(self.pdfObjects.keys()) + self.deletedItems
 
     def __repr__(self):
         return self.__str__()
@@ -416,10 +453,12 @@ class PDFFile:
 
 
 if __name__ == '__main__':
-    pdf = PDFFile("/media/jn98zk/318476C83114A23B/Uni-Mainz/Statistik/Stochastik für Einsteiger Eine Einführung in die faszinierende Welt des Zufalls. Mit über 220 Übungsaufgaben und Lösungen, 8. Auflage by Norbert Henze (z-lib.org).pdf")
-    pdf.get_pages()
-    pdf.save("DigitalDesign.pdf")
-    # pdf.has_outline()
+    pdf = PDFFile("/media/jn98zk/318476C83114A23B/Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow, 2nd Edition by Aurélien Géron (z-lib.org).pdf")
+    # pdf.set_PageMode(PageMode.UseOutlines)
+    # pdf.set_PageLayout(PageLayout.Continuous)
+
+    pdf.save("HandsOn.pdf")
+    pdf.has_outline()
     # pdf.increment_references(10)
     # pdf.save("out.pdf")
     # for i in indices:

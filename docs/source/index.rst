@@ -10,6 +10,7 @@ Welcome to CyPDFTools' documentation!
    :maxdepth: 2
    :caption: Table of Contents
 
+   PDFFile
    PDFObjects
    PDFObjectsParser
    PDFStructureObjects
