@@ -52,9 +52,7 @@ class PDFFile:
             letter = self.file.read(1)
 
         xrefAddress = b""
-        while True:
-            if not letter.isdigit():
-                break
+        while letter.isdigit():
             xrefAddress += letter
             self.file.seek(-2, SEEK_CUR)
             letter = self.file.read(1)
@@ -453,11 +451,11 @@ class PDFFile:
 
 
 if __name__ == '__main__':
-    pdf = PDFFile("/media/jn98zk/318476C83114A23B/Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow, 2nd Edition by Aurélien Géron (z-lib.org).pdf")
+    pdf = PDFFile("/home/jn98zk/Projects/CyPDFTools/HandsOn.pdf")
     # pdf.set_PageMode(PageMode.UseOutlines)
     # pdf.set_PageLayout(PageLayout.Continuous)
 
-    pdf.save("HandsOn.pdf")
+    pdf.save("2.pdf")
     pdf.has_outline()
     # pdf.increment_references(10)
     # pdf.save("out.pdf")
